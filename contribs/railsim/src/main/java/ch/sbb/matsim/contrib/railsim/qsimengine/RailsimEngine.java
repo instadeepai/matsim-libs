@@ -253,6 +253,7 @@ final class RailsimEngine implements Steppable {
 		}
 	}
 
+//	TODO: More clarity needed on how stopTime is calculated
 	private void updateDeparture(double time, UpdateEvent event) {
 
 		TrainState state = event.state;
@@ -602,7 +603,7 @@ final class RailsimEngine implements Steppable {
 		assert FuzzyUtils.greaterEqualThan(headDist, 0) : "Head distance must be positive";
 
 		// Find the earliest required update
-
+		//TODO: The following if else statements are not clear
 		double dist;
 		if (FuzzyUtils.lessEqualThan(tailDist, decelDist) &&
 			FuzzyUtils.lessEqualThan(tailDist, reserveDist) &&
