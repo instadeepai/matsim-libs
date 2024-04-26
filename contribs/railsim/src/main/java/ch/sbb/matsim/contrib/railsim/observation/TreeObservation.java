@@ -5,9 +5,7 @@
 //import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResource;
 //import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResourceManager;
 //import org.matsim.api.core.v01.network.Node;
-//// TODO: What is the time resolution of the environment?
-//// TODO: Is there any EVENT already created when the RL agent should be called? If not then we need to crate this event.
-//// TODO: Need help with creating these additional APIs
+//// TODO: What is the time resolution of the environment? 1 iteration is equal to home many seconds in rlsim?
 //import java.util.List;
 //import java.util.ArrayList;
 //class OtherAgent{
