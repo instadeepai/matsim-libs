@@ -19,11 +19,7 @@
 
 package ch.sbb.matsim.contrib.railsim.qsimengine;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import ch.sbb.matsim.contrib.railsim.qsimengine.disposition.DispositionResponse;
@@ -96,6 +92,26 @@ final class RailsimEngine implements Steppable {
 		}
 	}
 
+	public void doSimStepUsingRLInference(double time) {
+
+		Map<String, List<Float>> obs = getObservationForAliveTrains();
+		Map<String, Integer> actions = rlModel(obsDict);
+		Set<String> agent_ids = actions.keySet();
+		for (String aid:agent_ids){
+			int action = actions.get(aid);
+			if (action == 2){
+			// Create an event for stop
+			}
+			else {
+				updateRouteForAgent(aid, action);
+			}
+		}
+
+		doSimStep(time);
+	}
+
+
+
 	/**
 	 * Update the current state of all trains, even if no update would be needed.
 	 */
@@ -141,6 +157,8 @@ final class RailsimEngine implements Steppable {
 		for (TrainState train : activeTrains) {
 			if (train.timestamp < time)
 				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
+//				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
+//				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
 		}
 	}
 
