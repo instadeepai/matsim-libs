@@ -25,11 +25,18 @@ import java.util.stream.Collectors;
 import ch.sbb.matsim.contrib.railsim.qsimengine.disposition.DispositionResponse;
 import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailLink;
 import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResourceManager;
+import ch.sbb.matsim.contrib.railsim.rl.RLClient;
+import ch.sbb.matsim.contrib.railsim.rl.observation.Observation;
+import ch.sbb.matsim.contrib.railsim.rl.observation.ObservationNode;
+import ch.sbb.matsim.contrib.railsim.rl.observation.StepOutput;
+import ch.sbb.matsim.contrib.railsim.rl.observation.TreeObservation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.events.*;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.mobsim.framework.MobsimDriverAgent;
 import org.matsim.core.mobsim.framework.Steppable;
@@ -45,7 +52,7 @@ import ch.sbb.matsim.contrib.railsim.qsimengine.disposition.TrainDisposition;
 /**
  * Engine to simulate train movement.
  */
-final class RailsimEngine implements Steppable {
+public class RailsimEngine implements Steppable {
 
 	/**
 	 * Additional safety distance in meter that is added to the reservation distance.
@@ -55,12 +62,24 @@ final class RailsimEngine implements Steppable {
 	private static final Logger log = LogManager.getLogger(RailsimEngine.class);
 	private final EventsManager eventsManager;
 	private final RailsimConfigGroup config;
-	private final List<TrainState> activeTrains = new ArrayList<>();
+	protected final List<TrainState> activeTrains = new ArrayList<>();
 	private final Queue<UpdateEvent> updateQueue = new PriorityQueue<>();
 	private final RailResourceManager resources;
 	private final TrainDisposition disposition;
+	private Network network;
+	private RLClient rlClient;
 
-	RailsimEngine(EventsManager eventsManager, RailsimConfigGroup config, RailResourceManager resources, TrainDisposition disposition) {
+	// Overloaded constructor to be used when using RL based inference
+	public RailsimEngine(EventsManager eventsManager, RailsimConfigGroup config, RailResourceManager resources, TrainDisposition disposition, Network network, RLClient rlClient) {
+		this.eventsManager = eventsManager;
+		this.config = config;
+		this.resources = resources;
+		this.disposition = disposition;
+        this.network = network;
+		this.rlClient=rlClient;
+    }
+
+	public RailsimEngine(EventsManager eventsManager, RailsimConfigGroup config, RailResourceManager resources, TrainDisposition disposition) {
 		this.eventsManager = eventsManager;
 		this.config = config;
 		this.resources = resources;
@@ -92,24 +111,59 @@ final class RailsimEngine implements Steppable {
 		}
 	}
 
-	public void doSimStepUsingRLInference(double time) {
+//	TODO: Implement getStepOutput() function - calculate reward, truncated and terminated flags
+	private Map<String, StepOutput> getStepOutput(){
 
-		Map<String, List<Float>> obs = getObservationForAliveTrains();
-		Map<String, Integer> actions = rlModel(obsDict);
-		Set<String> agent_ids = actions.keySet();
-		for (String aid:agent_ids){
-			int action = actions.get(aid);
-			if (action == 2){
-			// Create an event for stop
-			}
-			else {
-				updateRouteForAgent(aid, action);
-			}
+		// set done before the train reaches the final goal - > when the blocked segment contains the goal link
+		for (TrainState train : activeTrains){
+			// get observation for each train
+			TreeObservation treeObs = new TreeObservation(train, this.resources, this.network);
+			List<Double> treeObsFlattened = treeObs.getFlattenedObservationTree();
+			List<ObservationNode> listObsNodes = treeObs.getObservationTree();
+			// coordinates of train head
+			List<Double> headPosition;
+			// speed of train
 		}
 
-		doSimStep(time);
+
+		return null;
 	}
 
+	// TODO: Complete the following function
+	public void doSimStepRL(double time){
+
+		if (activeTrains.size() >0){
+			// check if there is at least 1 active train
+			// send back Map<aid, StepOutput>
+			Map<String, StepOutput> stepOutputMap  = getStepOutput();
+			rlClient.sendObservation(stepOutputMap);
+
+			// get action corresponding to the initial observation sent
+			Map<String, Integer>  actionMap = rlClient.getAction();
+
+			// TODO: upadte route based on actionMap
+		}
+		doSimStep(time);
+
+	}
+
+//	public void doSimStepUsingRLInference(double time) {
+//
+//		Map<String, List<Float>> obs = getObservationForAliveTrains();
+//		Map<String, Integer> actions = rlModel(obsDict);
+//		Set<String> agent_ids = actions.keySet();
+//		for (String aid:agent_ids){
+//			int action = actions.get(aid);
+//			if (action == 2){
+//			// Create an event for stop
+//			}
+//			else {
+//				updateRouteForTrain(aid, action);
+//			}
+//		}
+//
+//		doSimStep(time);
+//	}
 
 
 	/**
@@ -157,8 +211,6 @@ final class RailsimEngine implements Steppable {
 		for (TrainState train : activeTrains) {
 			if (train.timestamp < time)
 				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
-//				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
-//				updateState(time, new UpdateEvent(train, UpdateEvent.Type.POSITION));
 		}
 	}
 
@@ -168,6 +220,7 @@ final class RailsimEngine implements Steppable {
 		this.eventsManager.processEvent(event);
 	}
 
+//	TODO: Where is UNBLOCK_LINK event being created?
 	private void updateState(double time, UpdateEvent event) {
 
 		// Do different updates depending on the type
@@ -577,7 +630,6 @@ final class RailsimEngine implements Steppable {
 		// Time needs to be rounded to current sim step
 		double stopTime = state.pt.handleTransitStop(state.nextStop, Math.ceil(time));
 		state.nextStop = state.pt.getNextTransitStop();
-
 		return stopTime;
 	}
 

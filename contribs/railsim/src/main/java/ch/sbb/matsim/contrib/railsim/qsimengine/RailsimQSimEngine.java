@@ -25,6 +25,7 @@ import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResourceManager;
 import com.google.inject.Inject;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.api.core.v01.population.Route;
@@ -58,6 +59,8 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 
 	private RailsimEngine engine;
 
+	private Network network;
+
 	@Inject
 	public RailsimQSimEngine(QSim qsim, RailResourceManager res, TrainDisposition disposition, TransitStopAgentTracker agentTracker) {
 		this.qsim = qsim;
@@ -68,6 +71,17 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 		this.agentTracker = agentTracker;
 	}
 
+	@Inject
+	public RailsimQSimEngine(QSim qsim, RailResourceManager res, TrainDisposition disposition, TransitStopAgentTracker agentTracker, Network network) {
+		this.qsim = qsim;
+		this.config = ConfigUtils.addOrGetModule(qsim.getScenario().getConfig(), RailsimConfigGroup.class);
+		this.res = res;
+		this.disposition = disposition;
+		this.modes = config.getNetworkModes();
+		this.agentTracker = agentTracker;
+		this.network = network;
+	}
+
 	@Override
 	public void setInternalInterface(InternalInterface internalInterface) {
 		this.internalInterface = internalInterface;
@@ -75,7 +89,8 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 
 	@Override
 	public void onPrepareSim() {
-		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
+//		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
+		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition, this.network);
 	}
 
 	@Override
