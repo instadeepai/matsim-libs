@@ -173,7 +173,7 @@ public final class RailsimCalc {
 	/**
 	 * Calculate the minimum distance that needs to be reserved for the train, such that it can stop safely.
 	 */
-	static double calcReservationDistance(TrainState state, RailLink currentLink) {
+	public static double calcReservationDistance(TrainState state, RailLink currentLink) {
 
 		double assumedSpeed = calcPossibleMaxSpeed(state);
 
