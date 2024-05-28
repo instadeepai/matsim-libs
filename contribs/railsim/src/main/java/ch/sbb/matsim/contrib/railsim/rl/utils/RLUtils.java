@@ -20,56 +20,78 @@ public class RLUtils {
 	}
 
 //	TODO: implement the functions: getSwitchNodeOnTrack and updateRoute
-	private boolean getSwitchNodeOnTrack(Network network, Node start, Node target, List<RailLink> path){
+	private static boolean getPathToSwitchNodeOnTrack(Link curLink,  Node target, List<RailLink> path){
 
 		/*
-		get links from a node to the switch node on the same track
+		get links from a node to the next switch node on the same track.
 		l0 St l1 l2 l3 l4 Sw
 		path = l1, l2, l3, l4
+
+		If target node found in the path, return true else false
 		 */
+		Node start = curLink.getToNode();
+		while ( start.getOutLinks().values().size() <= 2){
+			Link nextLink = null;
 
-		while (!start.equals(target) || (start.getOutLinks().values().size() > 2)){
-
-			// Get outgoing node from the start node
+			// get outLinks from the start node
 			List<Link> outLinks = start.getOutLinks().values().stream().collect(Collectors.toList());
+			assert (outLinks.size() == 2);
 
-			//
-			for (Link link: outLinks){
-				if new RailLink(link) in path
+			// get the fromNode of the curLink
+			Node fromNodeCurLink = curLink.getFromNode();
+
+			for (Link outLink : outLinks){
+				if (outLink.getToNode().equals(fromNodeCurLink)){
+					// Ignore the link where outLink(start) == curLink
+					continue;
+				}
+				else {
+					nextLink = outLink;
+					break;
+				}
 			}
-			path.add(new RailLink(temp));
-			start = temp.getToNode();
-			if (start.equals(target))
-				return true;
-		}
+			path.add(new RailLink(nextLink));
 
+			// update start node and curLink
+			start = nextLink.getToNode();
+			curLink = nextLink;
+			if (start.equals(target)) {
+				// target found in the path
+				return true;
+			}
+		}
+		// no path found to the target
+		return false;
 	}
 	public static void updateRoute(Network network, TrainState train, Node nextObsNode){
-
-
-		// Calculate path until nextObsNode
 
 		// Get the last link in the route
 		RailLink lastLinkInRoute = train.route.get(train.route.size() -1);
 
 		// get the toNode of the lastLinkInRoute
-		Node nextNode = getToNode(network, lastLinkInRoute);
+		Node toNodeLastLinkInRoute = getToNode(network, lastLinkInRoute);
 
-		// To store the path from lastLinkInRoute to node connecting the nextObsNode
-		List<RailLink> path = new ArrayList<>();
+		// get the fromNode of the lastLinkInRoute
+		Node fromNodeLastLinkInRoute = network.getLinks().get(lastLinkInRoute.getLinkId()).getFromNode();
 
+		// get the outLinks from the toNode of the lastLinkInRoute
+		List<Link> nextLinks = toNodeLastLinkInRoute.getOutLinks().values().stream().collect(Collectors.toList());
 
-		if (isSwitchable(nextNode, lastLinkInRoute, network)){
-			// the nextNode is not a switch Node
+		//path to the nextObsNode
+		List<RailLink> path = null;
+		for (Link nextLink : nextLinks){
 
+			// skip the link that takes back on the same track
+			if (nextLink.getToNode().equals(fromNodeLastLinkInRoute))
+				continue;
+
+			// To store the path from lastLinkInRoute to node connecting the nextObsNode
+			 path = new ArrayList<>();
+			if (getPathToSwitchNodeOnTrack(network.getLinks().get(lastLinkInRoute.getLinkId()), nextObsNode, path))
+				break;
 		}
-		else{
-			// iterate through all possible directions searching for the nextObsNode
 
-		}
-
-
-		// update route of the current train
+		assert path != null;
 		train.route.addAll(path);
 	}
 
