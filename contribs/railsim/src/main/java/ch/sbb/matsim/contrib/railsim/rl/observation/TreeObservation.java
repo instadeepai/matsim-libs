@@ -10,7 +10,6 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -43,15 +42,18 @@ public class TreeObservation {
 	private final TrainState position;
 	private final RailResourceManager resources;
 	private final Network network;
-	private List<ObservationNode> observationList;
+	private List<ObservationTreeNode> observationList;
 	private List<Double> flattenedObservation;
-	public TreeObservation(TrainState position, RailResourceManager resources, Network network) {
+
+	int depth;
+	public TreeObservation(TrainState position, RailResourceManager resources, Network network, int depth) {
 		this.resources = resources;
 		this.position = position;
 		this.network = network;
 		this.observationList = new ArrayList<>();
 		this.flattenedObservation= new ArrayList<>();
-		createTreeObs();
+		this.depth = depth;
+		createTreeObs(this.depth);
 	}
 
 	private RailLink getBufferTip() {
@@ -62,11 +64,6 @@ public class TreeObservation {
 		RailLink bufferTip = reservedSegment.get(reservedSegment.size() - 1);
 
 		return bufferTip;
-	}
-
-	private void createTreeObs() {
-		int depth = 3;
-		createTreeObs(depth);
 	}
 
 
@@ -87,7 +84,7 @@ public class TreeObservation {
 		return false;
 	}
 
-	private ObservationNode createObservatioNode(TrainPosition train, RailLink curLink, Node node, OtherAgent sameDirAgent, OtherAgent oppDirAgent){
+	private ObservationTreeNode createObservatioNode(TrainPosition train, RailLink curLink, Node node, OtherAgent sameDirAgent, OtherAgent oppDirAgent){
 
 		// Get coordinates of the nextNode
 		List<Double> nodePosition  = new ArrayList<Double>(Arrays.asList(node.getCoord().getX(), node.getCoord().getY()));
@@ -108,11 +105,11 @@ public class TreeObservation {
 
 		int numParallelIncomingTracks = node.getInLinks().size();
 
-		return new ObservationNode(nodePosition,distNodeAgent, distNextHalt, isSwitchable, sameDirAgent, oppDirAgent, numParallelIncomingTracks, node.getId());
+		return new ObservationTreeNode(nodePosition,distNodeAgent, distNextHalt, isSwitchable, sameDirAgent, oppDirAgent, numParallelIncomingTracks, node.getId());
 
 	}
 
-	private List<Double> flattenObservationNode(ObservationNode obsNode) {
+	private List<Double> flattenObservationNode(ObservationTreeNode obsNode) {
 
 		List<Double> flattenedNode = new ArrayList<>();
 
@@ -154,7 +151,7 @@ public class TreeObservation {
 					exploreQueue.add(nextNode);
 //					TrainPosition trainF = getClosestTrainOnPathF(curNode, nextNode);
 //					TrainPosition trainR = getClosestTrainOnPathR(curNode, nextNode);
-					ObservationNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), nextNode, null, null);
+					ObservationTreeNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), nextNode, null, null);
 					this.observationList.add(obsNode);
 					this.flattenedObservation.addAll(flattenObservationNode(obsNode));
 				}
@@ -177,7 +174,6 @@ public class TreeObservation {
 //			ResourceState state = resource.getState(railLink);
 //			// TODO: Ask Christian how we get the train position of the nearest train.
 //		}
-//
 //		return null;
 	}
 
@@ -194,6 +190,8 @@ public class TreeObservation {
 //		return null;
 	}
 
+
+
  	private List<Node> getNextNodes(Node curNode) {
 		// next switches
 		List<Node> obsTreeNodes = new ArrayList<>();
@@ -206,6 +204,8 @@ public class TreeObservation {
 			while (!isObsTreeNode(nextNode)) {
 				// get the single outgoing link and follow it
 				// TODO: Handle end of network, will throw NoSuchElementException at the moment
+
+				//TODO: Fix me. This is wrong as they nextNode in the same track can have 2 outLinks.
 				nextNode = nextNode.getOutLinks().values().iterator().next().getToNode();
 			}
 			obsTreeNodes.add(nextNode);
@@ -217,7 +217,7 @@ public class TreeObservation {
 		return network.getLinks().get(link.getLinkId()).getToNode();
 	}
 
-	public List<ObservationNode> getObservationTree() {
+	public List<ObservationTreeNode> getObservationTree() {
 		return observationList;
 	}
 

@@ -102,9 +102,9 @@ public class EnvironmentFactoryServer {
 			List<String> agentIds = env.reset();
 
 			//Create response using agentIds
-			ProtoAgentIDs.Builder agentIDsBuilder = ProtoAgentIDs.newBuilder();
-			agentIDsBuilder.addAllAgentId(agentIds);
-			ProtoAgentIDs response = agentIDsBuilder.build();
+			ProtoAgentIDs response = ProtoAgentIDs.newBuilder()
+				.addAllAgentId(agentIds)
+				.build();
 
 			// Send the reply back to the client.
             responseObserver.onNext(response);

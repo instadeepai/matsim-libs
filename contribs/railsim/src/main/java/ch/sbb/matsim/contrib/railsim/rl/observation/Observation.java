@@ -4,27 +4,43 @@ import java.util.*;
 
 public class Observation{
 	//TODO: Add timestamp as well in the observation
-	List<Double> obsTree = new ArrayList<>();
+	double railsim_timestamp;
+
+	List<Double> flattenedObsTree = new ArrayList<>();
+
+	public Observation() {
+
+	}
+
+	public List<ObservationTreeNode> getObsTree() {
+		return obsTree;
+	}
+
+	public void setObsTree(List<ObservationTreeNode> obsTree) {
+		this.obsTree = obsTree;
+	}
+
+	List<ObservationTreeNode> obsTree= new ArrayList();
 	//
 	List<Double> trainState = new ArrayList<Double>(4);
 	// x and y coordinate of the node
 	List<Double> positionNextNode = new ArrayList<Double>(2);
 
-	public int getTimestamp() {
-		return timestamp;
+	public double getRailsim_timestamp() {
+		return railsim_timestamp;
 	}
 
-	public void setTimestamp(int timestamp) {
-		this.timestamp = timestamp;
+	public void setRailsim_timestamp(double railsim_timestamp) {
+		this.railsim_timestamp = railsim_timestamp;
 	}
 
 	int timestamp;
-	public List<Double> getObsTree() {
-		return obsTree;
+	public List<Double> getFlattenedObsTree() {
+		return flattenedObsTree;
 	}
 
-	public void setObsTree(List<Double> obsTree) {
-		this.obsTree = obsTree;
+	public void setFlattenedObsTree(List<Double> flattenedObsTree) {
+		this.flattenedObsTree = flattenedObsTree;
 	}
 
 	public List<Double> getTrainState() {
@@ -47,7 +63,7 @@ public class Observation{
 	@Override
 	public String toString() {
 		return "Observation{" +
-			"obsTree=" + obsTree +
+			"obsTree=" + flattenedObsTree +
 			", trainState=" + trainState +
 			", positionNextNode=" + positionNextNode +
 			'}';
@@ -62,7 +78,7 @@ public class Observation{
 		}
 		int lenObsTree = (int)(Math.pow(2.0, depthObservationTree+1)-1)*17;
 		for (int i=0; i<lenObsTree; i++){
-			this.obsTree.add(Math.random());
+			this.flattenedObsTree.add(Math.random());
 		}
 	}
 	public Observation(double depthObservationTree, boolean random){

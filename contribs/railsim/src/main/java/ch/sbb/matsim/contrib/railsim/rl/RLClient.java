@@ -1,7 +1,6 @@
 package ch.sbb.matsim.contrib.railsim.rl;
 
 import ch.sbb.matsim.contrib.railsim.grpc.RailsimConnecterGrpc;
-import ch.sbb.matsim.contrib.railsim.grpc.ProtoObservationMap;
 import ch.sbb.matsim.contrib.railsim.grpc.ProtoActionMap;
 import ch.sbb.matsim.contrib.railsim.grpc.ProtoStepOutputMap;
 import ch.sbb.matsim.contrib.railsim.grpc.ProtoObservation;
@@ -13,7 +12,6 @@ import ch.sbb.matsim.contrib.railsim.rl.observation.StepOutput;
 import io.grpc.*;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,7 +52,7 @@ public class RLClient {
 
 			//Build the Observation object - this will be used inside the StepOutput class
 			ProtoObservation protoObservation = ProtoObservation.newBuilder()
-				.addAllObsTree(stepOutput.getObservation().getObsTree())
+				.addAllObsTree(stepOutput.getObservation().getFlattenedObsTree())
 				.addAllPositionNextNode(stepOutput.getObservation().getPositionNextNode())
 				.addAllTrainState(stepOutput.getObservation().getTrainState())
 				.build();

@@ -49,4 +49,9 @@ public interface TrainDisposition {
 	 */
 	void unblockRailLink(double time, MobsimDriverAgent driver, RailLink link);
 
+	/**
+	 * Method invoked when a train is arriving at rout end.
+	 */
+	void onArrival(double time, TrainPosition position);
+
 }

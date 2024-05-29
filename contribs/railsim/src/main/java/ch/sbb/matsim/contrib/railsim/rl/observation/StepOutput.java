@@ -72,4 +72,9 @@ public class StepOutput{
 		}
 	}
 
+	public StepOutput(){
+
+	}
+
+
 }

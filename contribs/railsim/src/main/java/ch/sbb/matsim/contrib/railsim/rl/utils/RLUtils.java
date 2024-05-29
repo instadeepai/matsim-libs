@@ -20,7 +20,7 @@ public class RLUtils {
 	}
 
 //	TODO: implement the functions: getSwitchNodeOnTrack and updateRoute
-	private static boolean getPathToSwitchNodeOnTrack(Link curLink,  Node target, List<RailLink> path){
+	public static boolean getPathToSwitchNodeOnTrack(Link curLink,  Node target, List<RailLink> path){
 
 		/*
 		get links from a node to the next switch node on the same track.
@@ -55,7 +55,7 @@ public class RLUtils {
 			// update start node and curLink
 			start = nextLink.getToNode();
 			curLink = nextLink;
-			if (start.equals(target)) {
+			if (target != null && start.equals(target)) {
 				// target found in the path
 				return true;
 			}
