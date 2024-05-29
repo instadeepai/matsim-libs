@@ -196,4 +196,9 @@ public class SimpleDisposition implements TrainDisposition {
 		// put resource handling into release track
 		resources.releaseLink(time, link, driver);
 	}
+
+	@Override
+	public void onArrival(double time, TrainPosition position) {
+
+	}
 }

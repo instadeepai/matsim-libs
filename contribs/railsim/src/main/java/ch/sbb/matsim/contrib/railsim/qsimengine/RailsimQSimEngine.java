@@ -90,7 +90,7 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 	@Override
 	public void onPrepareSim() {
 //		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
-		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition, this.network);
+		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
 	}
 
 	@Override
