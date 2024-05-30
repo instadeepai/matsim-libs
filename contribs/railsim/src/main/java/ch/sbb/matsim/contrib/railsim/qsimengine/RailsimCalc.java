@@ -173,7 +173,7 @@ public final class RailsimCalc {
 	/**
 	 * Calculate the minimum distance that needs to be reserved for the train, such that it can stop safely.
 	 */
-	static double calcReservationDistance(TrainState state, RailLink currentLink) {
+	public static double calcReservationDistance(TrainState state, RailLink currentLink) {
 
 		double assumedSpeed = calcPossibleMaxSpeed(state);
 
@@ -262,6 +262,56 @@ public final class RailsimCalc {
 
 		return result;
 	}
+
+
+//	public static List<RailLink> calcLinksToBlockRL(TrainPosition position, RailLink currentLink, double reserveDist) {
+//
+//		// Assumption: The route for each train from start position to next switch/goal is calculated during train
+//		// initialisation.
+//
+//		List<RailLink> result = new ArrayList<>();
+//
+//		// Assume current distance left on link is already reserved (only for fixed block)
+//		double dist = currentLink.length - position.getHeadPosition();
+//
+//		int idx = position.getRouteIndex();
+//
+//		Railink targetLink = getTargetLink(thisTrainId);
+//		// This function always needs to provide more reserve distance than requested (except when it will stop)
+//		while (FuzzyUtils.lessEqualThan(dist, reserveDist) && targetLink != currentLink) {
+//			RailLink nextLink = position.getRoute(idx++);
+//
+//			// nextLink will be NULL only when the to-node of the link is a decision node
+//			if (nextLink == NULL){
+//				Map<String, Observation> obs= getObservationsOfAllTrains();
+//				Map<String, Integer> actions = rlModel(obs);
+//
+//				// 3 possible actions: 0: do nothing; 1: switch; 2: STOP
+//				actionForThisTrain = actions[thisTrainId];
+//				if (actionForThisTrain == STOP){
+//				//	update the event for this train to reduce velocity to zero
+//					// Assumption 1: The train is stopped write before entering the link (assuming fixed block).
+//					// Assumption 2: The Railsim engine automatically polls to reserve distance for this train after some
+//					// time period.
+//				}
+//				else{
+//					// This method calculates the route of the given train
+//					// according to the chosen direction
+//					updateRouteForCurrentTrain(thisTrainId, actionForThisTrain, obs[thisTrainId]);
+//				}
+//				continue;
+//			}
+//			dist += nextLink.length;
+//
+//			result.add(nextLink);
+//
+//			// Don't block beyond stop
+//			if (position.isStop(nextLink.getLinkId()))
+//				break;
+//		}
+//
+//		return result;
+//	}
 
 	/**
 	 * Calculate distance to the next stop.

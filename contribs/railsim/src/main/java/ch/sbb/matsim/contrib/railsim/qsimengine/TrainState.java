@@ -32,7 +32,7 @@ import java.util.List;
 /**
  * Stores the mutable current state of a train.
  */
-final class TrainState implements TrainPosition {
+public final class TrainState implements TrainPosition {
 
 	/**
 	 * Driver of the train.
@@ -59,7 +59,7 @@ final class TrainState implements TrainPosition {
 	/**
 	 * Route of this train.
 	 */
-	final List<RailLink> route;
+	public final List<RailLink> route;
 
 	/**
 	 * Current index in the list of route links.

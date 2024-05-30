@@ -1,0 +1,60 @@
+syntax = "proto3";
+option java_multiple_files = true;
+import "google/protobuf/empty.proto";
+
+option java_package = "ch.sbb.matsim.contrib.railsim.grpc";
+
+
+message ProtoObservation {
+    repeated double obsTree = 1;
+    repeated double trainState = 2;
+    repeated double positionNextNode = 3;
+    double timestamp=4;
+}
+
+message ProtoStepOutput {
+  ProtoObservation observation = 1;
+  double reward = 2;
+  bool terminated = 3;
+  bool truncated = 4;
+  map<string, string> info = 5;
+}
+
+message ProtoStepOutputMap {
+  map<string, ProtoStepOutput> dictStepOutput= 1;
+}
+
+message ProtoAgentIDs {
+  repeated string agentId = 1;
+}
+
+message ProtoActionMap{
+    map<string, int32> dictAction = 1;
+}
+
+message ProtoObservationMap {
+    map<string, ProtoObservation> dictObservation= 1;
+}
+
+message ProtoConfirmationResponse{
+    string ack = 1;
+}
+
+service RailsimConnecter {
+
+    rpc getAction (google.protobuf.Empty) returns (ProtoActionMap) {};
+
+    rpc updateState (ProtoStepOutputMap) returns (ProtoConfirmationResponse) {};
+
+}
+
+message ProtoGrpcPort{
+    int32 grpcPort = 1;
+}
+
+service RailsimFactory{
+    rpc getEnvironment (ProtoGrpcPort)  returns (ProtoConfirmationResponse) {};
+
+    rpc resetEnv (ProtoGrpcPort) returns (ProtoAgentIDs) {};
+}
+

@@ -30,6 +30,7 @@
 	</nodes>
 
 	<!-- ====================================================================== -->
+	<!--TODO: This is supposed to be microscropic? Why is the attribute 'railTrainCapacity' > 1 for the links? Also, in the network-specification.md, the attribute is named 'railSimCapacity'. I assume both of these are the same?-->
 
 	<links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75">
 		<link id="t1_A-t1_B" from="t1_A" to="t1_B" length="1000.0" freespeed="2.7777777777777777" capacity="3600.0" permlanes="1.0" oneway="1" modes="rail">

@@ -58,6 +58,14 @@ public class SimpleDisposition implements TrainDisposition {
 		// Nothing to do.
 	}
 
+	/**
+	 * This method tries to first calculate the links needed by the train for moving the safety_distance.
+	 * Then for each link of the segment, it check if it can blocked completely.
+	 * Only when all the links of the segment (list of links) can be blocked,
+	 * a Response with approved distance = length of the links is returned.
+	 */
+	//TODO: In the PPT it's mentioned that the requestNewSegment loops over all the links in the route, However, it just tries to block the segment (set of links)
+	//  which are needed for safety distance.
 	@Override
 	public DispositionResponse requestNextSegment(double time, TrainPosition position, double dist) {
 
@@ -114,6 +122,8 @@ public class SimpleDisposition implements TrainDisposition {
 		return new DispositionResponse(reserveDist, stop ? 0 : Double.POSITIVE_INFINITY, null);
 	}
 
+	// TODO: I don't understand why detour is happening if the train is on the entrylink
+	//  or if the train blocked links, one of which is an entry link ?
 	private Detour checkDetour(double time, List<RailLink> segment, TrainPosition position) {
 
 		if (position.getPt() != null && considerReRouting(segment, resources.getLink(position.getHeadLink()))) {
@@ -185,5 +195,10 @@ public class SimpleDisposition implements TrainDisposition {
 
 		// put resource handling into release track
 		resources.releaseLink(time, link, driver);
+	}
+
+	@Override
+	public void onArrival(double time, TrainPosition position) {
+
 	}
 }
