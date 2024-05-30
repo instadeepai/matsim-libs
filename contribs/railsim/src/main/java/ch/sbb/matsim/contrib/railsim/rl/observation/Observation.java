@@ -3,7 +3,6 @@ package ch.sbb.matsim.contrib.railsim.rl.observation;
 import java.util.*;
 
 public class Observation{
-	//TODO: Add timestamp as well in the observation
 	double railsim_timestamp;
 
 	List<Double> flattenedObsTree = new ArrayList<>();

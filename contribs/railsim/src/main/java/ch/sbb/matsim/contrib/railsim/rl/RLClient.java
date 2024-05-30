@@ -55,6 +55,7 @@ public class RLClient {
 				.addAllObsTree(stepOutput.getObservation().getFlattenedObsTree())
 				.addAllPositionNextNode(stepOutput.getObservation().getPositionNextNode())
 				.addAllTrainState(stepOutput.getObservation().getTrainState())
+				.setTimestamp(stepOutput.getObservation().getRailsim_timestamp())
 				.build();
 
 			// build StepOutput
