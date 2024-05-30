@@ -3,6 +3,7 @@ package ch.sbb.matsim.contrib.railsim;
 //import ch.sbb.matsim.contrib.railsim.rl.RLClient;
 
 import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimQSimModule;
+import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimRLQSimModule;
 import ch.sbb.matsim.contrib.railsim.rl.RLClient;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -65,7 +66,7 @@ public class RailsimEnv {
 		controler.addOverridingModule(new RailsimModule());
 
 		// if you have other extensions that provide QSim components, call their configure-method here
-		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));
+		controler.configureQSimComponents(components -> new RailsimRLQSimModule().configure(components));
 		//TODO: Fix Me: implement the method getAllTrainIds()
 		// get all train Ids in this scenario.
 		return getAllTrainIds(scenario);

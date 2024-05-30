@@ -9,7 +9,7 @@ message ProtoObservation {
     repeated double obsTree = 1;
     repeated double trainState = 2;
     repeated double positionNextNode = 3;
-    int32 timestamp=4;
+    double timestamp=4;
 }
 
 message ProtoStepOutput {

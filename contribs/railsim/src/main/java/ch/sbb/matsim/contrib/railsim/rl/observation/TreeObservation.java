@@ -13,6 +13,7 @@ import org.matsim.api.core.v01.network.Node;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils;
 
@@ -127,14 +128,16 @@ public class TreeObservation {
 		RailLink bufferTipLink = getBufferTip();
 
 		// Get the toNode of the bufferTipLink
-		Node toNode = getToNode(bufferTipLink);
-		List<Node> exploreQueue = new ArrayList<Node>();
+		Node toNodeBufferTipLink = getToNode(bufferTipLink);
+		List<Node> exploreQueue = new ArrayList<>();
 
+		// store a list of visitedNodes to avoid infinite loop in case of cycles in the network.
+		List<Node> visitedNodes = new ArrayList<>();
 
-		while(!isObsTreeNode(toNode)){
-			toNode = toNode.getOutLinks().values().iterator().next().getToNode();
+		while(!isObsTreeNode(toNodeBufferTipLink)){
+			toNodeBufferTipLink = toNodeBufferTipLink.getOutLinks().values().iterator().next().getToNode();
 		}
-		exploreQueue.add(toNode);
+		exploreQueue.add(toNodeBufferTipLink);
 
 		for (int i = 0; i < depth; i++) {
 			// Level Traversal algorithm
@@ -142,71 +145,82 @@ public class TreeObservation {
 			while (lenExploreQueue > 0) {
 				// Level traversal
 				Node curNode = exploreQueue.get(0);
+
+				// Create observationTreeNode from the curNode
+//				TrainPosition trainF = getClosestTrainOnPathF(curNode, nextNode);
+//				TrainPosition trainR = getClosestTrainOnPathR(curNode, nextNode);
+				ObservationTreeNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), curNode, null, null);
+				this.observationList.add(obsNode);
+				this.flattenedObservation.addAll(flattenObservationNode(obsNode));
+
 				exploreQueue.remove(0);
+				visitedNodes.add(curNode);
 
 				// Look for switches/intersections/stops on the branches stemming out of the current switch
-				List<Node> nextNodes = getNextNodes(curNode);
+				List<Node> nextNodes = getNextNodes(toNodeBufferTipLink, curNode);
 
+				// Add nextNode only if it's not already visited
 				for (Node nextNode : nextNodes) {
-					exploreQueue.add(nextNode);
-//					TrainPosition trainF = getClosestTrainOnPathF(curNode, nextNode);
-//					TrainPosition trainR = getClosestTrainOnPathR(curNode, nextNode);
-					ObservationTreeNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), nextNode, null, null);
-					this.observationList.add(obsNode);
-					this.flattenedObservation.addAll(flattenObservationNode(obsNode));
+					if (!visitedNodes.contains(nextNode)){
+						exploreQueue.add(nextNode);
+					}
 				}
 				lenExploreQueue -= 1;
 			}
 		}
 	}
 
-	private TrainPosition getClosestTrainOnPathR(Node curNode, Node nextNode) {
-//		// complete route to current position of the train from schedule, if needed?
-//		List<RailLink> previousRoute = position.getRoute(0, position.getRouteIndex());
+	private TrainPosition getClosestTrainOnPathR(Node curNode, Node nextNode) throws NotImplementedException{
 		throw new NotImplementedException();
-//		// TODO: If all opposite trains are needed, follow the inLinks of curNode until the nextNode is reached. Store the of the path links.
-//		List<Link> path = null;
-//
-//		// check for each link if there is capacity
-//		for (Link link : path) {
-//			RailLink railLink = resources.getLink(link.getId());
-//			RailResource resource = railLink.getResource();
-//			ResourceState state = resource.getState(railLink);
-//			// TODO: Ask Christian how we get the train position of the nearest train.
-//		}
-//		return null;
+	}
+	private TrainPosition getClosestTrainOnPathF(Node curNode, Node nextNode) throws NotImplementedException {
+		throw new NotImplementedException();
 	}
 
-	private TrainPosition getClosestTrainOnPathF(Node curNode, Node nextNode) {
-		throw new NotImplementedException();
-//		// complete route from current position of the train from schedule, if needed?
-//		List<RailLink> upcomingRoute = position.getRoute(position.getRouteIndex(), position.getRouteSize());
-//
-//		// TODO: If all opposite trains are needed, follow the outLinks of curNode until the nextNode is reached. Store the of the path links.
-//		List<Link> path = null;
-//
-//		// same procedure as above...
-//
-//		return null;
-	}
-
-
-
- 	private List<Node> getNextNodes(Node curNode) {
+ 	private List<Node> getNextNodes(Node toNodeBufferTipLink, Node obsNode) {
 		// next switches
 		List<Node> obsTreeNodes = new ArrayList<>();
 
-		// check all outgoing links from the current node
-		for (Link outLink : curNode.getOutLinks().values()) {
+		// check all outgoing links from the current obsNode
+		for (Link outLink : obsNode.getOutLinks().values()) {
+
+			boolean reverseDirection = false;
 			Node nextNode = outLink.getToNode();
 
+			Node prevNode = obsNode;
 			// follow nodes with only one outgoing link until a switch or a halt is reached
 			while (!isObsTreeNode(nextNode)) {
 				// get the single outgoing link and follow it
 				// TODO: Handle end of network, will throw NoSuchElementException at the moment
 
-				//TODO: Fix me. This is wrong as they nextNode in the same track can have 2 outLinks.
-				nextNode = nextNode.getOutLinks().values().iterator().next().getToNode();
+				List<Link> outLinks = nextNode.getOutLinks().values().stream().collect(Collectors.toList());
+				Link nextLink = null;
+				for(Link link : outLinks){
+					// skip the link that leads to prevNode to avoid an infinite loop
+					if (link.getToNode().equals(prevNode)){
+						continue;
+					}
+					else{
+						nextLink = link;
+						break;
+					}
+				}
+
+				// update prevNode
+				prevNode = nextNode;
+
+				// update nextNode
+				nextNode = nextLink.getToNode();
+
+				if (nextNode.equals(toNodeBufferTipLink)){
+					reverseDirection =true;
+					break;
+				}
+			}
+
+			if (reverseDirection){
+				// skip the current outLink as this link from the switchNode leads to the observing train
+				continue;
 			}
 			obsTreeNodes.add(nextNode);
 		}

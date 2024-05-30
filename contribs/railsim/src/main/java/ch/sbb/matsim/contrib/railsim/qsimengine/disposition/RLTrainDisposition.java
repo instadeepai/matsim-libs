@@ -12,6 +12,7 @@ import ch.sbb.matsim.contrib.railsim.rl.observation.Observation;
 import ch.sbb.matsim.contrib.railsim.rl.observation.ObservationTreeNode;
 import ch.sbb.matsim.contrib.railsim.rl.observation.StepOutput;
 import ch.sbb.matsim.contrib.railsim.rl.observation.TreeObservation;
+import jakarta.inject.Inject;
 import org.apache.commons.jxpath.ri.compiler.Step;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.network.Link;
@@ -34,6 +35,8 @@ public class RLTrainDisposition implements TrainDisposition {
 	RLClient rlClient;
 
 	Map<String, StepOutput> bufferStepOutputMap;
+
+	@Inject
 	public RLTrainDisposition(RailResourceManager resources, TrainRouter router, Network network, RLClient rlClient) {
 		this.resources = resources;
 		this.router = router;

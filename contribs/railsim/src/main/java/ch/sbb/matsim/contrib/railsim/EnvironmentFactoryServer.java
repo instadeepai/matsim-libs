@@ -108,10 +108,12 @@ public class EnvironmentFactoryServer {
 
 			// Send the reply back to the client.
             responseObserver.onNext(response);
+
             // Indicate that no further messages will be sent to the client.
             responseObserver.onCompleted();
 
 			// Start the simulation
+			//TODO: Should this be started on a different thread so that the endpoint is not blocked or is it automatically taken care of?
 			env.startSimulation();
 
         }
