@@ -19,9 +19,9 @@
 
 package ch.sbb.matsim.contrib.railsim;
 
-import ch.sbb.matsim.contrib.railsim.qsimengine.TrainState;
+
+import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimRLDispositionModule;
 import ch.sbb.matsim.contrib.railsim.rl.RLClient;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.config.Config;
@@ -65,6 +65,7 @@ public final class RunRailsimExample {
 		Controler controler = new Controler(scenario);
 
 		controler.addOverridingModule(new RailsimModule());
+		controler.addOverridingQSimModule(new RailsimRLDispositionModule(new RLClient(9000)));
 
 		// if you have other extensions that provide QSim components, call their configure-method here
 		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));

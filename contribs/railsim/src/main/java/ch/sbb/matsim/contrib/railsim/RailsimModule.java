@@ -34,7 +34,7 @@ public class RailsimModule extends AbstractModule {
 
 	@Override
 	public void install() {
-//		installQSimModule(new RailsimRLQSimModule(null));
+		installQSimModule(new RailsimQSimModule());
 		ConfigUtils.addOrGetModule(getConfig(), RailsimConfigGroup.class);
 
 		bind(RailsimLinkStateControlerListener.class).in(Singleton.class);
