@@ -19,12 +19,7 @@
 
 package ch.sbb.matsim.contrib.railsim;
 
-import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimRLQSimModule;
-import ch.sbb.matsim.contrib.railsim.qsimengine.TrainState;
-import ch.sbb.matsim.contrib.railsim.rl.RLClient;
-import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.Controler;
@@ -32,12 +27,6 @@ import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.scenario.ScenarioUtils;
 
 import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimQSimModule;
-import org.matsim.pt.transitSchedule.api.TransitLine;
-import org.matsim.pt.transitSchedule.api.TransitRoute;
-import org.matsim.pt.transitSchedule.api.TransitStopFacility;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * Example script that shows how to use railsim included in this contrib.
@@ -68,9 +57,7 @@ public final class RunRailsimExample {
 		controler.addOverridingModule(new RailsimModule());
 
 		// if you have other extensions that provide QSim components, call their configure-method here
-//		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));
-		controler.configureQSimComponents(components -> new RailsimRLQSimModule(new RLClient(55422)).configure(components));
-
+		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));
 		controler.run();
 	}
 
