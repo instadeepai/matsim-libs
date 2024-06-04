@@ -18,6 +18,8 @@ import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.visum.VisumNetwork;
 import org.matsim.pt.transitSchedule.api.TransitLine;
+
+import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 public class RailsimEnv {
 	RLClient rlClient; // RLClient would be needed by RailsimEngine.
 	Controler controler;
+
+	@Inject
 	public RailsimEnv(RLClient rlClient){
 //		TODO: Pass this to RLDisposition
 		this.rlClient = rlClient;
@@ -66,7 +70,7 @@ public class RailsimEnv {
 		controler.addOverridingModule(new RailsimModule());
 
 		// if you have other extensions that provide QSim components, call their configure-method here
-		controler.configureQSimComponents(components -> new RailsimRLQSimModule().configure(components));
+		controler.configureQSimComponents(components -> new RailsimRLQSimModule(rlClient).configure(components));
 		//TODO: Fix Me: implement the method getAllTrainIds()
 		// get all train Ids in this scenario.
 		return getAllTrainIds(scenario);

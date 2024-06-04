@@ -19,7 +19,9 @@
 
 package ch.sbb.matsim.contrib.railsim;
 
+import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimRLQSimModule;
 import ch.sbb.matsim.contrib.railsim.qsimengine.TrainState;
+import ch.sbb.matsim.contrib.railsim.rl.RLClient;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Network;
@@ -56,6 +58,9 @@ public final class RunRailsimExample {
 
 		Config config = ConfigUtils.loadConfig(configFilename);
 		config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
+		config.controller().setLastIteration(0);
+		config.controller().setDumpDataAtEnd(true);
+		config.controller().setCreateGraphs(false);
 
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		Controler controler = new Controler(scenario);
@@ -63,47 +68,10 @@ public final class RunRailsimExample {
 		controler.addOverridingModule(new RailsimModule());
 
 		// if you have other extensions that provide QSim components, call their configure-method here
-		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));
+//		controler.configureQSimComponents(components -> new RailsimQSimModule().configure(components));
+		controler.configureQSimComponents(components -> new RailsimRLQSimModule(new RLClient(55422)).configure(components));
 
 		controler.run();
-
-		// Required: List of all agents
-		// Schedule of arrival and departure for all the halts for all trains
-
-//		// Transit stops
-//		Map<Id<TransitStopFacility>, TransitStopFacility> transitStops = scenario.getTransitSchedule().getFacilities();
-//
-//		// Transit lines
-//		Map<Id<TransitLine>, TransitLine> transitLineMap = scenario.getTransitSchedule().getTransitLines();
-
-		/*
-		Transit line contains:
-		 - transitRoute
-			- route profile : sequence of stops with their arrival and departure times
-			- route: sequence of links
-			- departures: the train ids and their corresponding departure times.
-
-		Each stop is essentially a link
-
-		There can be multiple transit lines
-		 */
-
-		/*
-		Output data structure
-
-		 */
-//		List<TransitLine> transitLines  = scenario.getTransitSchedule().getTransitLines().values().stream().toList();
-//
-//		for (TransitLine tl: transitLines){
-//			List<TransitRoute> transitRoutes = tl.getRoutes().values().stream().toList();
-//			for (TransitRoute tr: transitRoutes){
-//				tr.getDepartures();
-//				tr.getStops().get(0).getStopFacility();
-//
-//			}
-//		}
-
-
 	}
 
 }

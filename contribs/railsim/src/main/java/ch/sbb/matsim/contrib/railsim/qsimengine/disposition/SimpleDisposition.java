@@ -54,13 +54,23 @@ public class SimpleDisposition implements TrainDisposition {
 	}
 
 	@Override
-	public void onDeparture(double time, MobsimDriverAgent driver, List<RailLink> route) {
+	public void onDeparture(double time, TrainPosition driver, List<RailLink> route) {
 		// Nothing to do.
+	}
+
+	@Override
+	public void onStopDeparture(double time, TrainPosition position){
+		//Nothing to do
+	}
+
+	@Override
+	public void onSimulationEnd(double now){
+		// Nothing to do
 	}
 
 	/**
 	 * This method tries to first calculate the links needed by the train for moving the safety_distance.
-	 * Then for each link of the segment, it check if it can blocked completely.
+	 * Then for each link of the segment, it checks if it can blocked completely.
 	 * Only when all the links of the segment (list of links) can be blocked,
 	 * a Response with approved distance = length of the links is returned.
 	 */
@@ -198,7 +208,7 @@ public class SimpleDisposition implements TrainDisposition {
 	}
 
 	@Override
-	public void onArrival(double time, TrainPosition position) {
+	public void onArrival(double time, TrainPosition position, Boolean terminated) {
 
 	}
 }

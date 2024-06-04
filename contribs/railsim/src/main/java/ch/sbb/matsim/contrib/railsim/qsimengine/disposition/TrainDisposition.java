@@ -33,7 +33,7 @@ public interface TrainDisposition {
 	/**
 	 * Method invoked when a train is departing.
 	 */
-	void onDeparture(double time, MobsimDriverAgent driver, List<RailLink> route);
+	void onDeparture(double time, TrainPosition position, List<RailLink> route);
 
 	/**
 	 * Request the next segment to be reserved.
@@ -50,8 +50,18 @@ public interface TrainDisposition {
 	void unblockRailLink(double time, MobsimDriverAgent driver, RailLink link);
 
 	/**
-	 * Method invoked when a train is arriving at rout end.
+	 * Method invoked when a train is arriving at a stop.
+	 * @param terminated a flag to indicate if the stop is the route end
 	 */
-	void onArrival(double time, TrainPosition position);
+	void onArrival(double time, TrainPosition position, Boolean terminated);
+
+	/**
+	 * Method invoked when the train departs from stops
+	 * 	@param time current time
+	 * 	@param position position information
+	 */
+	public void onStopDeparture(double time, TrainPosition position);
+
+	public void onSimulationEnd(double now);
 
 }

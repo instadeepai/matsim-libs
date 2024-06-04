@@ -141,7 +141,7 @@ public class RailsimEngine implements Steppable {
 
 		activeTrains.add(state);
 
-		disposition.onDeparture(now, state.driver, state.route);
+		disposition.onDeparture(now, state, state.route);
 
 		updateQueue.add(new UpdateEvent(state, UpdateEvent.Type.DEPARTURE));
 
@@ -378,6 +378,9 @@ public class RailsimEngine implements Steppable {
 			event.plannedTime = time + stopTime;
 			state.speed = 0;
 
+			// call disposition
+//			disposition.onHaltDeparture(event.plannedTime, event.state);
+
 			return;
 		}
 
@@ -385,7 +388,7 @@ public class RailsimEngine implements Steppable {
 		if (!event.waitingForLink && state.isRouteAtEnd()) {
 
 			//call disposition
-			disposition.onArrival(time, event.state);
+			disposition.onArrival(time, event.state, true);
 
 			assert FuzzyUtils.equals(state.speed, 0) : "Speed must be 0 at end, but was " + state.speed;
 
@@ -472,6 +475,12 @@ public class RailsimEngine implements Steppable {
 			unblockTrack(time, state, tailLink);
 		else
 			updateQueue.add(new UpdateEvent(state, tailLink, time));
+
+		// Call disposition to calculate delay between scheduled departure and actual departure for the current stop.
+		if (state.isStop(state.getTailLink())){
+			disposition.onStopDeparture(time,state);
+		}
+
 	}
 
 	/**
@@ -819,5 +828,7 @@ public class RailsimEngine implements Steppable {
 			eventsManager.processEvent(new VehicleAbortsEvent(now, train.driver.getVehicle().getId(), train.headLink));
 			eventsManager.processEvent(new PersonStuckEvent(now, train.driver.getId(), train.headLink, train.driver.getMode()));
 		}
+
+		disposition.onSimulationEnd(now);
 	}
 }
