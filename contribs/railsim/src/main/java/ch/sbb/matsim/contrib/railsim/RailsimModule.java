@@ -22,6 +22,7 @@ package ch.sbb.matsim.contrib.railsim;
 import ch.sbb.matsim.contrib.railsim.analysis.linkstates.RailsimLinkStateControlerListener;
 import ch.sbb.matsim.contrib.railsim.analysis.trainstates.RailsimTrainStateControlerListener;
 import ch.sbb.matsim.contrib.railsim.config.RailsimConfigGroup;
+import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimQSimModule;
 import com.google.inject.Singleton;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.AbstractModule;
@@ -33,7 +34,7 @@ public class RailsimModule extends AbstractModule {
 
 	@Override
 	public void install() {
-//		installQSimModule(new RailsimRLQSimModule(null));
+		installQSimModule(new RailsimQSimModule());
 		ConfigUtils.addOrGetModule(getConfig(), RailsimConfigGroup.class);
 
 		bind(RailsimLinkStateControlerListener.class).in(Singleton.class);
