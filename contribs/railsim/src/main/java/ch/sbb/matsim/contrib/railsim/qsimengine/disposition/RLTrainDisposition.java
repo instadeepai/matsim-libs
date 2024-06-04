@@ -62,7 +62,7 @@ public class RLTrainDisposition implements TrainDisposition {
 		// get vehicle Id
 		Id<Vehicle> trainId = train.getPt().getPlannedVehicleId();
 
-		// use trainSit route to get departures for the train
+		// use trainsit route to get departures for the train
         TransitRoute transitRoute = train.getPt().getTransitRoute();
 		List<Departure> departures = transitRoute.getDepartures().values().stream().collect(Collectors.toList());
 
@@ -123,6 +123,8 @@ public class RLTrainDisposition implements TrainDisposition {
 		Map<String, StepOutput> stepOutputMap = getStepOutput(position, getObservation(time, position), getReward(), false);
 		bufferStepOutputMap.putAll(stepOutputMap);
 		rlClient.sendObservation(bufferStepOutputMap);
+
+		// clear the buffer after sending the stepOutput
 		bufferStepOutputMap.clear();
 
 
@@ -214,14 +216,14 @@ public class RLTrainDisposition implements TrainDisposition {
 		// Store the StepOutput in bufferStepOutput.
 		// bufferStepOutput is not sent to RL until there is an observation for a train whose done=false
 		bufferStepOutputMap.putAll(getStepOutput(position, getObservation(time, position), getReward(), true));
+
+		// remove the train from active trains
+		activeTrains.remove(position.getPt().getPlannedVehicleId());
 	}
 	@Override
 	public void onArrival(double time, TrainPosition position, Boolean terminated) {
 		if (Boolean.TRUE.equals(terminated)){
 			onTermination(time, position);
-
-			// remove the train from active trains
-			activeTrains.remove(position.getPt().getPlannedVehicleId());
 		}
 	}
 
@@ -239,11 +241,6 @@ public class RLTrainDisposition implements TrainDisposition {
 				delay = Math.min(delay, time - depTime);
 			}
 		}
-
-		if (delay<0){
-			delay = 0.0;
-		}
-
 		delays.put(trainId, delay);
 	}
 
