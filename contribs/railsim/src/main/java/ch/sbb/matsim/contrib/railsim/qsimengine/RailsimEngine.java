@@ -376,10 +376,6 @@ public class RailsimEngine implements Steppable {
 
 			// Same event is re-scheduled after stopping,
 			event.plannedTime = time + stopTime;
-
-			// call disposition
-//			disposition.onHaltDeparture(event.plannedTime, event.state);
-
 			return;
 		}
 
