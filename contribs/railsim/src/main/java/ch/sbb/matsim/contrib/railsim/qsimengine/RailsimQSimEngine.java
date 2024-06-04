@@ -71,16 +71,6 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 		this.agentTracker = agentTracker;
 	}
 
-	@Inject
-	public RailsimQSimEngine(QSim qsim, RailResourceManager res, TrainDisposition disposition, TransitStopAgentTracker agentTracker, Network network) {
-		this.qsim = qsim;
-		this.config = ConfigUtils.addOrGetModule(qsim.getScenario().getConfig(), RailsimConfigGroup.class);
-		this.res = res;
-		this.disposition = disposition;
-		this.modes = config.getNetworkModes();
-		this.agentTracker = agentTracker;
-		this.network = network;
-	}
 
 	@Override
 	public void setInternalInterface(InternalInterface internalInterface) {
@@ -89,7 +79,6 @@ public class RailsimQSimEngine implements DepartureHandler, MobsimEngine {
 
 	@Override
 	public void onPrepareSim() {
-//		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
 		engine = new RailsimEngine(qsim.getEventsManager(), config, res, disposition);
 	}
 

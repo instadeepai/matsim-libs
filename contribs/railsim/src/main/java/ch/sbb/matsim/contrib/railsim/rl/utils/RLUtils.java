@@ -148,7 +148,7 @@ public class RLUtils {
 			return false;
 		}
 		else{
-			List<? extends Link> outLinks = switchNode.getOutLinks().values().stream().toList();
+			List<Link> outLinks = switchNode.getOutLinks().values().stream().collect(Collectors.toList());
 			List<Node> toNodeOfOutLinkList = new ArrayList<>();
 			for (Link link: outLinks){
 				toNodeOfOutLinkList.add(link.getToNode());
