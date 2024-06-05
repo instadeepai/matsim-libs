@@ -15,8 +15,11 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.protobuf.Empty;
+
+
 public class RLClient {
-    private final RailsimConnecterGrpc.RailsimConnecterBlockingStub blockingStub;
+    private RailsimConnecterGrpc.RailsimConnecterBlockingStub blockingStub=null;
     private static final Logger logger = Logger.getLogger(RLClient.class.getName());
     public RLClient(int port){
 		String target = "localhost:"+port;
@@ -31,7 +34,8 @@ public class RLClient {
 
         try {
             // Call the original method on the server.
-            actionMap = blockingStub.getAction(null);
+			Empty request = Empty.newBuilder().build();
+			actionMap = blockingStub.getAction(request);
         } catch (StatusRuntimeException e) {
             // Log a warning if the RPC fails.
             logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());

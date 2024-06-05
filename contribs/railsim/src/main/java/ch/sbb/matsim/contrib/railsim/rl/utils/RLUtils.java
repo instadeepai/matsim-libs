@@ -1,7 +1,10 @@
 package ch.sbb.matsim.contrib.railsim.rl.utils;
 
+import ch.sbb.matsim.contrib.railsim.qsimengine.RailsimCalc;
+import ch.sbb.matsim.contrib.railsim.qsimengine.TrainPosition;
 import ch.sbb.matsim.contrib.railsim.qsimengine.TrainState;
 import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailLink;
+import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResourceManager;
 import org.matsim.api.core.v01.events.Event;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -19,18 +22,29 @@ public class RLUtils {
 		return network.getLinks().get(link.getLinkId()).getToNode();
 	}
 
-//	TODO: implement the functions: getSwitchNodeOnTrack and updateRoute
-	public static boolean getPathToSwitchNodeOnTrack(Link curLink,  Node target, List<RailLink> path){
 
-		/*
-		get links from a node to the next switch node on the same track.
-		l0 St l1 l2 l3 l4 Sw
-		path = l1, l2, l3, l4
+	public static boolean getPathToSwitchNodeOnTrack(Link curLink, Node target, List<RailLink> path, RailResourceManager resources){
 
-		If target node found in the path, return true else false
-		 */
+		// In the beginning there will be just one link (corresponding to the start link)
+		// specified in the route of each train. However, the route of the train has a duplicated entry
+		// of the entry link. Therefore, min(path.size()) = 2 at the time of start of departure.
+		if (path.size()==2 && path.get(0).equals(path.get(1))){
+			// remove the duplicate entry link for the train
+			path.remove(1);
+		}
+
+//		get links from a node to the next switch node on the same track.
+//		l0 St l1 l2 l3 l4 Sw
+//		path = l1, l2, l3, l4
+//
+//		If target node found in the path, return true else false
+
 		Node start = curLink.getToNode();
-		while ( start.getOutLinks().values().size() <= 2){
+//		Node start = network.getLinks().get(curLink.getLinkId()).getToNode();
+
+		// at all points in the track start node will have two outgoing links except at the final goal point
+		// where outgoing link will be 1 or at a switch node where the outgoing links will be more than 2.
+		while ( start.getOutLinks().values().size() == 2){
 			Link nextLink = null;
 
 			// get outLinks from the start node
@@ -50,7 +64,10 @@ public class RLUtils {
 					break;
 				}
 			}
-			path.add(new RailLink(nextLink));
+
+			// convert Link to Raillink
+			RailLink convertedNextLink = resources.getLink(nextLink.getId());
+			path.add(convertedNextLink);
 
 			// update start node and curLink
 			start = nextLink.getToNode();
@@ -63,7 +80,7 @@ public class RLUtils {
 		// no path found to the target
 		return false;
 	}
-	public static void updateRoute(Network network, TrainState train, Node nextObsNode){
+	public static void updateRoute(Network network, TrainState train, Node nextObsNode, RailResourceManager resources){
 
 		// Get the last link in the route
 		RailLink lastLinkInRoute = train.route.get(train.route.size() -1);
@@ -87,7 +104,7 @@ public class RLUtils {
 
 			// To store the path from lastLinkInRoute to node connecting the nextObsNode
 			 path = new ArrayList<>();
-			if (getPathToSwitchNodeOnTrack(network.getLinks().get(lastLinkInRoute.getLinkId()), nextObsNode, path))
+			if (getPathToSwitchNodeOnTrack(network.getLinks().get(lastLinkInRoute.getLinkId()), nextObsNode, path, resources))
 				break;
 		}
 
@@ -166,6 +183,19 @@ public class RLUtils {
 				return true;
 			else
 				return false;
+		}
+	}
+
+	public static RailLink getBufferTip(RailResourceManager resources, TrainState position ) {
+		double reserveDist = RailsimCalc.calcReservationDistance(position, resources.getLink(position.getHeadLink()));
+		RailLink currentLink = resources.getLink(position.getHeadLink());
+		List<RailLink> reservedSegment = RailsimCalc.calcLinksToBlock(position, currentLink, reserveDist);
+		// if no track could be reserved return null
+		if (reservedSegment.size()==0)
+			return null;
+		else{
+			RailLink bufferTip = reservedSegment.get(reservedSegment.size() - 1);
+			return bufferTip;
 		}
 	}
 
