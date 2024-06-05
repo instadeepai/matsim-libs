@@ -62,6 +62,9 @@ public class RailsimEnv {
 
 		Config config = ConfigUtils.loadConfig(configFilename);
 		config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
+		config.controller().setLastIteration(0);
+		config.controller().setDumpDataAtEnd(true);
+		config.controller().setCreateGraphs(false);
 
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		controler = new Controler(scenario);

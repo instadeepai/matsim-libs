@@ -65,16 +65,6 @@ public class RailsimEngine implements Steppable {
 	private final RailResourceManager resources;
 	private final TrainDisposition disposition;
 
-	// Overloaded constructor to be used when using RL based inference
-//	public RailsimEngine(EventsManager eventsManager, RailsimConfigGroup config, RailResourceManager resources, TrainDisposition disposition, Network network, RLClient rlClient) {
-//		this.eventsManager = eventsManager;
-//		this.config = config;
-//		this.resources = resources;
-//		this.disposition = disposition;
-//        this.network = network;
-//		this.rlClient=rlClient;
-//    }
-
 	public RailsimEngine(EventsManager eventsManager, RailsimConfigGroup config, RailResourceManager resources, TrainDisposition disposition) {
 		this.eventsManager = eventsManager;
 		this.config = config;
@@ -161,7 +151,6 @@ public class RailsimEngine implements Steppable {
 		this.eventsManager.processEvent(event);
 	}
 
-//	TODO: Where is UNBLOCK_LINK event being created?
 	private void updateState(double time, UpdateEvent event) {
 
 		// Do different updates depending on the type
@@ -265,7 +254,6 @@ public class RailsimEngine implements Steppable {
 		}
 	}
 
-//	TODO: More clarity needed on how stopTime is calculated
 	private void updateDeparture(double time, UpdateEvent event) {
 
 		TrainState state = event.state;
@@ -826,6 +814,7 @@ public class RailsimEngine implements Steppable {
 			eventsManager.processEvent(new PersonStuckEvent(now, train.driver.getId(), train.headLink, train.driver.getMode()));
 		}
 
+		System.out.println("end simulation called");
 		disposition.onSimulationEnd(now);
 	}
 }

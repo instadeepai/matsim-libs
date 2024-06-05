@@ -27,8 +27,7 @@ import org.matsim.vehicles.Vehicle;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.getPathToSwitchNodeOnTrack;
-import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.updateRoute;
+import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.*;
 
 public class RLTrainDisposition implements TrainDisposition {
 	RailResourceManager resources;
@@ -53,6 +52,7 @@ public class RLTrainDisposition implements TrainDisposition {
 		this.bufferStepOutputMap = new HashMap<>();
 		this.departureSchedule = new HashMap<>();
 		this.activeTrains = new HashMap<>();
+		this.delays = new HashMap<>();
 		System.out.println("RLTrainDisposition created");
 	}
 
@@ -67,22 +67,38 @@ public class RLTrainDisposition implements TrainDisposition {
 		List<Departure> departures = transitRoute.getDepartures().values().stream().collect(Collectors.toList());
 
 		for (Departure departure: departures){
-			double routeDepartureTime = departure.getDepartureTime();
-			for (TransitRouteStop stop : transitRoute.getStops()){
-				Id<Link> stopLinkId = stop.getStopFacility().getLinkId();
-				double offset = stop.getDepartureOffset().seconds();
-				double scheduledDepartureTime = routeDepartureTime + offset;
+			if (departure.getVehicleId().equals(trainId)){
+				double routeDepartureTime = departure.getDepartureTime();
 
-				// store time corresponding to the train and halt
-				if (!this.departureSchedule.containsKey(trainId)){
-					Map<Id<Link>, List<Double>> mapLinkDepartureTime = new HashMap<>();
-					departureSchedule.put(trainId, mapLinkDepartureTime);
+				for (int i=0; i<transitRoute.getStops().size(); i++ ){
+
+					TransitRouteStop stop = transitRoute.getStops().get(i);
+					Id<Link> stopLinkId = stop.getStopFacility().getLinkId();
+
+					double offset = 0.0;
+					if (i==transitRoute.getStops().size()-1){
+						// for the last stop, use arrival offset
+						offset = stop.getArrivalOffset().seconds();
+					}else{
+						// this would work fine all stops except the last stop
+						// as the last stop does not have any departure offset
+						offset = stop.getDepartureOffset().seconds();
+					}
+					// calculate scheduled departure time
+					double scheduledDepartureTime = routeDepartureTime + offset;
+
+					// store time scheduled departure time corresponding to the train and halt
+					if (!this.departureSchedule.containsKey(trainId)){
+						Map<Id<Link>, List<Double>> mapLinkDepartureTime = new HashMap<>();
+						departureSchedule.put(trainId, mapLinkDepartureTime);
+					}
+					if (!departureSchedule.get(trainId).containsKey(stopLinkId)){
+						List<Double> listDepartureTimes = new ArrayList<>();
+						departureSchedule.get(trainId).put(stopLinkId, listDepartureTimes);
+					}
+					departureSchedule.get(trainId).get(stopLinkId).add(scheduledDepartureTime);
 				}
-				if (!departureSchedule.get(trainId).containsKey(stopLinkId)){
-					List<Double> listDepartureTimes = new ArrayList<>();
-					departureSchedule.get(trainId).put(stopLinkId, listDepartureTimes);
-				}
-				departureSchedule.get(trainId).get(stopLinkId).add(scheduledDepartureTime);
+
 			}
 		}
 	}
@@ -108,7 +124,8 @@ public class RLTrainDisposition implements TrainDisposition {
 
 		// Update route for the train until the next switch node.
 		Link curLink = network.getLinks().get(train.getHeadLink());
-		getPathToSwitchNodeOnTrack(curLink, null, route);
+
+		getPathToSwitchNodeOnTrack(curLink, null, route, resources);
 
 		// calculate the scheduled departure times of the train
 		calculateScheduleOnDeparture((TrainState) train);
@@ -119,43 +136,48 @@ public class RLTrainDisposition implements TrainDisposition {
 
 	@Override
 	public DispositionResponse requestNextSegment(double time, TrainPosition position, double dist) {
-		// calculate and send StepOutput to rl
-		Map<String, StepOutput> stepOutputMap = getStepOutput(position, getObservation(time, position), getReward(), false);
-		bufferStepOutputMap.putAll(stepOutputMap);
-		rlClient.sendObservation(bufferStepOutputMap);
+//		// calculate and send StepOutput to rl
+		Observation ob = getObservation(time, position);
 
-		// clear the buffer after sending the stepOutput
-		bufferStepOutputMap.clear();
+		RailLink bufferTipLink = getBufferTip(resources, (TrainState) position);
+		Node toNodeBufferTipLink = network.getLinks().get(bufferTipLink.getLinkId()).getToNode();
+		if(toNodeBufferTipLink.getOutLinks().size()>=3){
+			// RL should be called only when the buffer is about to reach the decision node
+			Map<String, StepOutput> stepOutputMap = getStepOutput(position, ob, getReward(), false);
+			bufferStepOutputMap.putAll(stepOutputMap);
+			rlClient.sendObservation(bufferStepOutputMap);
+			// clear the buffer after sending the stepOutput
+			bufferStepOutputMap.clear();
 
+			// get action from rl
+			Map<String, Integer> actionMap = rlClient.getAction();
 
-		// get action from rl
-		Map<String, Integer> actionMap = rlClient.getAction();
+			//update route based on the action from rl
+			int action = actionMap.get(position.getPt().getPlannedVehicleId().toString());
 
-		//update route based on the action from rl
-		int action = actionMap.get(position.getTrain().id().toString());
+			StepOutput out = stepOutputMap.get(position.getPt().getPlannedVehicleId().toString());
+			switch (action){
+				case 0:{
+					// update route in the query direction
+					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
+					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+					break;
+				}
+				case 1:{
+					// update route in the other direction
+					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
+					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+					break;
+				}
+				case 2:{
+					// stop the train
+					return new DispositionResponse(0, 0, null);
+				}
+				default:{
+					System.out.println("Illegal action");
+				}
 
-		StepOutput out = stepOutputMap.get(position.getTrain().id().toString());
-		switch (action){
-			case 0:{
-				// update route in the query direction
-				Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
-				updateRoute(network, (TrainState) position, nextSwitchNodePos);
-				break;
 			}
-			case 1:{
-				// update route in the other direction
-				Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
-				updateRoute(network, (TrainState) position, nextSwitchNodePos);
-				break;
-			}
-			case 2:{
-				// stop the train
-				return new DispositionResponse(0, 0, null);
-			}
-			default:{
-				System.out.println("Illegal action");
-			}
-
 		}
 
 		RailLink currentLink = resources.getLink(position.getHeadLink());
@@ -246,7 +268,6 @@ public class RLTrainDisposition implements TrainDisposition {
 
 	@Override
 	public void onSimulationEnd(double now){
-
 		// get observation for all active trains and
 		// set all the trains having heavy negative reward
 
@@ -272,8 +293,17 @@ public class RLTrainDisposition implements TrainDisposition {
 		ob.setObsTree(listObsNodes);
 		ob.setFlattenedObsTree(treeObsFlattened);
 
-		// choose the 1st child of the root node as the nextNode for query direction
-		Node nextNode = network.getNodes().get(listObsNodes.get(1).getNodeId());
+
+		Node nextNode = null;
+		if (listObsNodes.size()>1){
+			// choose the 1st child of the root node as the nextNode for query direction
+			nextNode = network.getNodes().get(listObsNodes.get(1).getNodeId());
+		}else{
+			// if there are no children of the root node then make root as the nextNode for query
+			nextNode = network.getNodes().get(listObsNodes.get(0).getNodeId());
+		}
+
+		// get coords of the query node
 		List<Double> positionNextNode  = new ArrayList<>();
 		positionNextNode.add(nextNode.getCoord().getX());
 		positionNextNode.add(nextNode.getCoord().getY());
@@ -318,7 +348,7 @@ public class RLTrainDisposition implements TrainDisposition {
 		stepOutput.setObservation(observation);
 
 		Map<String, StepOutput> stepOutputMap= new HashMap<>();
-		stepOutputMap.put(train.getTrain().id().toString(), stepOutput);
+		stepOutputMap.put(train.getPt().getPlannedVehicleId().toString(), stepOutput);
 
 		return stepOutputMap;
 	}

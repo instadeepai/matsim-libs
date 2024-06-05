@@ -27,10 +27,10 @@
 			</routeProfile>
 			<route>
 				<link refId="t1_A-t1_B"/>
-				<link refId="t1_B-t2_A"/>
-				<link refId="t2_A-t2_B"/>
-				<link refId="t2_B-t3_A"/>
-				<link refId="t3_A-t3_B"/>
+<!--				<link refId="t1_B-t2_A"/>-->
+<!--				<link refId="t2_A-t2_B"/>-->
+<!--				<link refId="t2_B-t3_A"/>-->
+<!--				<link refId="t3_A-t3_B"/>-->
 			</route>
 			<departures>
 				<departure id="0" departureTime="08:00:00" vehicleRefId="train1"/>
@@ -49,10 +49,10 @@
 			</routeProfile>
 			<route>
 				<link refId="t3_B-t3_A"/>
-				<link refId="t3_A-t2_B"/>
-				<link refId="t2_B-t2_A"/>
-				<link refId="t2_A-t1_B"/>
-				<link refId="t1_B-t1_A"/>
+<!--				<link refId="t3_A-t2_B"/>-->
+<!--				<link refId="t2_B-t2_A"/>-->
+<!--				<link refId="t2_A-t1_B"/>-->
+<!--				<link refId="t1_B-t1_A"/>-->
 			</route>
 			<departures>
 				<departure id="0" departureTime="08:00:01" vehicleRefId="train6"/>

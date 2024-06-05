@@ -6,17 +6,22 @@ import ch.sbb.matsim.contrib.railsim.qsimengine.TrainState;
 import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailLink;
 import ch.sbb.matsim.contrib.railsim.qsimengine.resources.RailResourceManager;
 import org.apache.commons.lang3.NotImplementedException;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils;
+import org.matsim.pt.transitSchedule.api.Departure;
+import org.matsim.pt.transitSchedule.api.TransitLine;
+import org.matsim.pt.transitSchedule.api.TransitRoute;
+import org.matsim.pt.transitSchedule.api.TransitRouteStop;
+import org.matsim.vehicles.Vehicle;
 
+import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.getBufferTip;
 import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.isSwitchable;
 
 class OtherAgent {
@@ -45,8 +50,10 @@ public class TreeObservation {
 	private final Network network;
 	private List<ObservationTreeNode> observationList;
 	private List<Double> flattenedObservation;
-
 	int depth;
+	Map<Id<TransitRoute>, List<Id<Link>>> transitRouteStops;
+
+
 	public TreeObservation(TrainState position, RailResourceManager resources, Network network, int depth) {
 		this.resources = resources;
 		this.position = position;
@@ -54,30 +61,61 @@ public class TreeObservation {
 		this.observationList = new ArrayList<>();
 		this.flattenedObservation= new ArrayList<>();
 		this.depth = depth;
+		this.transitRouteStops = new HashMap<>();
 		createTreeObs(this.depth);
+
 	}
 
-	private RailLink getBufferTip() {
-		double reserveDist = RailsimCalc.calcReservationDistance(position, resources.getLink(position.getHeadLink()));
-		RailLink currentLink = resources.getLink(position.getHeadLink());
-		List<RailLink> reservedSegment = RailsimCalc.calcLinksToBlock(position, currentLink, reserveDist);
-		// TODO Verify if the links are added in the list in the sequence of occurence.
-		RailLink bufferTip = reservedSegment.get(reservedSegment.size() - 1);
+	private void getStopsOnTransitLine(TransitRoute transitRoute){
+		// Calculate the stops on a particular transit line and store it in a map
 
-		return bufferTip;
+		List<Id<Link>> stops = new ArrayList<>();
+		// get any departure on the transitline
+		Departure departure = transitRoute.getDepartures().values().stream().collect(Collectors.toList()).get(0);
+		for (TransitRouteStop stop: transitRoute.getStops() ){
+			stops.add(stop.getStopFacility().getLinkId());
+		}
+		this.transitRouteStops.put(transitRoute.getId(), stops);
 	}
-
-
 	private boolean isObsTreeNode(Node toNode){
 
-		// Check if the node is halt position of train
+		// Boolean to check if the toNode is halt position of train
 		boolean isStop = false;
-		//TODO: This would fail if more than one halts lie in the observation tree. The code would recognise just one.
-		Node nextHaltToNode = network.getLinks().get(position.getPt().getNextTransitStop().getLinkId()).getToNode();
-		if (nextHaltToNode.equals(toNode))
-			isStop = true;
 
-		// Check if the node is a switch node. Each node will have minimum two outgoing nodes.
+		// get vehicle Id
+		Id<Vehicle> trainId = position.getPt().getPlannedVehicleId();
+
+		// use transit route to get departures for the train
+		TransitRoute transitRoute = position.getPt().getTransitRoute();
+
+		// calculate stops in this route
+		if (!transitRouteStops.containsKey(transitRoute.getId())){
+			getStopsOnTransitLine(transitRoute);
+		}
+		List<Id<Link>> stopsList = transitRouteStops.get(transitRoute.getId());
+
+		// Iterate through all the stops of the transitLine
+		for (Id<Link> linkId : stopsList){
+			// if toNode(stopLink) == toNode, mark the toNode to be a halt
+			if (network.getLinks().get(linkId).getToNode().equals(toNode)){
+				isStop = true;
+				break;
+			}
+		}
+
+//		if (position.getPt().getNextTransitStop() != null){
+//			// ensure that there is a nextTransitStop. On the final destination
+//			// nextTransitStop is null
+//			Node nextHaltToNode = network.getLinks().get(position.getPt().getNextTransitStop().getLinkId()).getToNode();
+//			if (nextHaltToNode.equals(toNode))
+//				isStop = true;
+//		}
+//
+//		// toNode is the end of the track with just one outLink in opposite direction
+//		if (toNode.getOutLinks().size()==1)
+//			isStop = true;
+
+		// Check if the node is a switch node. A switch node must have more than .
 		boolean switch_node = toNode.getOutLinks().size() > 2;
 		if (isStop || switch_node){
 			return true;
@@ -95,12 +133,16 @@ public class TreeObservation {
 		List<Double> toNodeCurLinkPosition = new ArrayList<Double>(Arrays.asList(toNodeCurLink.getCoord().getX(), toNodeCurLink.getCoord().getY()));
 
 		//calculate distance of train to nextNode
-		double distNodeAgent = train.getHeadPosition()+RLUtils.calculateEuclideanDistance(nodePosition, toNodeCurLinkPosition);
+		double distNodeAgent = curLink.length - train.getHeadPosition()+RLUtils.calculateEuclideanDistance(nodePosition, toNodeCurLinkPosition);
 
-		Node nextHaltToNode = network.getLinks().get(position.getPt().getNextTransitStop().getLinkId()).getToNode();
-		List<Double> nextHaltToNodePosition = new ArrayList<Double>(Arrays.asList(nextHaltToNode.getCoord().getX(), nextHaltToNode.getCoord().getY()));
+		double distNextHalt = 0;
+		if (position.getPt().getNextTransitStop() != null){
+			// next transit stop will be null at the end of the route
+			Node nextHaltToNode = network.getLinks().get(position.getPt().getNextTransitStop().getLinkId()).getToNode();
+			List<Double> nextHaltToNodePosition = new ArrayList<Double>(Arrays.asList(nextHaltToNode.getCoord().getX(), nextHaltToNode.getCoord().getY()));
+			distNextHalt = RLUtils.calculateEuclideanDistance(nodePosition, nextHaltToNodePosition);
+		}
 
-		double distNextHalt = RLUtils.calculateEuclideanDistance(nodePosition, nextHaltToNodePosition);
 
 		int isSwitchable = isSwitchable(node, curLink, network) ? 1 : 0;
 
@@ -125,19 +167,28 @@ public class TreeObservation {
 
 	private void createTreeObs(int depth){
 		// Get the link of the tip of the buffer
-		RailLink bufferTipLink = getBufferTip();
+		RailLink bufferTipLink = getBufferTip(resources, position);
+		if (bufferTipLink == null){
+			// if there is no buffer because there is no reserved distance then
+			// assume bufferTipLink to be the headLink
+			bufferTipLink = resources.getLink(position.getHeadLink());
+		}
 
-		// Get the toNode of the bufferTipLink
+		// Get the toNode and fromNode of the bufferTipLink
 		Node toNodeBufferTipLink = getToNode(bufferTipLink);
+		Node fromNodeBufferTipLink = network.getLinks().get(bufferTipLink.getLinkId()).getFromNode();
+
 		List<Node> exploreQueue = new ArrayList<>();
 
 		// store a list of visitedNodes to avoid infinite loop in case of cycles in the network.
 		List<Node> visitedNodes = new ArrayList<>();
 
-		while(!isObsTreeNode(toNodeBufferTipLink)){
-			toNodeBufferTipLink = toNodeBufferTipLink.getOutLinks().values().iterator().next().getToNode();
-		}
+		// the added node may not necessarily be an observation tree node
 		exploreQueue.add(toNodeBufferTipLink);
+
+		// If the "toNodeBufferTipLink" is not an observation tree node then increase the depth by 1
+		if(!isObsTreeNode(toNodeBufferTipLink))
+			depth +=1;
 
 		for (int i = 0; i < depth; i++) {
 			// Level Traversal algorithm
@@ -145,19 +196,20 @@ public class TreeObservation {
 			while (lenExploreQueue > 0) {
 				// Level traversal
 				Node curNode = exploreQueue.get(0);
+				exploreQueue.remove(0);
 
 				// Create observationTreeNode from the curNode
-//				TrainPosition trainF = getClosestTrainOnPathF(curNode, nextNode);
-//				TrainPosition trainR = getClosestTrainOnPathR(curNode, nextNode);
-				ObservationTreeNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), curNode, null, null);
-				this.observationList.add(obsNode);
-				this.flattenedObservation.addAll(flattenObservationNode(obsNode));
-
-				exploreQueue.remove(0);
+				if(isObsTreeNode(curNode)){
+					// if the exploredNode fits the criteria of observation tree node, then
+					// add the node in the ObservationTree list
+					ObservationTreeNode obsNode = createObservatioNode(position, resources.getLink(position.getHeadLink()), curNode, null, null);
+					this.observationList.add(obsNode);
+					this.flattenedObservation.addAll(flattenObservationNode(obsNode));
+				}
 				visitedNodes.add(curNode);
 
 				// Look for switches/intersections/stops on the branches stemming out of the current switch
-				List<Node> nextNodes = getNextNodes(toNodeBufferTipLink, curNode);
+				List<Node> nextNodes = getNextNodes(fromNodeBufferTipLink, curNode);
 
 				// Add nextNode only if it's not already visited
 				for (Node nextNode : nextNodes) {
@@ -177,7 +229,7 @@ public class TreeObservation {
 		throw new NotImplementedException();
 	}
 
- 	private List<Node> getNextNodes(Node toNodeBufferTipLink, Node obsNode) {
+ 	private List<Node> getNextNodes(Node fromNodeBufferTipLink, Node obsNode) {
 		// next switches
 		List<Node> obsTreeNodes = new ArrayList<>();
 
@@ -188,37 +240,49 @@ public class TreeObservation {
 			Node nextNode = outLink.getToNode();
 
 			Node prevNode = obsNode;
-			// follow nodes with only one outgoing link until a switch or a halt is reached
+
+			// traverse the track until a halt/final destination/switch is reached
 			while (!isObsTreeNode(nextNode)) {
 				// get the single outgoing link and follow it
 				// TODO: Handle end of network, will throw NoSuchElementException at the moment
-
+				if (nextNode.equals(fromNodeBufferTipLink)){
+					reverseDirection =true;
+					break;
+				}
 				List<Link> outLinks = nextNode.getOutLinks().values().stream().collect(Collectors.toList());
-				Link nextLink = null;
-				for(Link link : outLinks){
-					// skip the link that leads to prevNode to avoid an infinite loop
-					if (link.getToNode().equals(prevNode)){
-						continue;
+
+				// At the final stop, there will be just 1 outlink
+				Link nextLink = outLinks.get(0);
+
+				if (outLinks.size()>1){
+					// update the nextLink to point the right direction if there are more than 1 outlink
+					for(Link link : outLinks){
+						// skip the link that leads to prevNode to avoid an infinite loop
+						if (link.getToNode().equals(prevNode)){
+							continue;
+						}
+						else{
+							nextLink = link;
+							break;
+						}
 					}
-					else{
-						nextLink = link;
+					// update prevNode
+					prevNode = nextNode;
+
+					// update nextNode
+					nextNode = nextLink.getToNode();
+
+					if (nextNode.equals(fromNodeBufferTipLink)){
+						reverseDirection =true;
 						break;
 					}
-				}
-
-				// update prevNode
-				prevNode = nextNode;
-
-				// update nextNode
-				nextNode = nextLink.getToNode();
-
-				if (nextNode.equals(toNodeBufferTipLink)){
-					reverseDirection =true;
+				}else{
+					// nextNode is the final stop with just 1 outgoing link
 					break;
 				}
 			}
 
-			if (reverseDirection){
+			if (reverseDirection || nextNode.equals(fromNodeBufferTipLink)){
 				// skip the current outLink as this link from the switchNode leads to the observing train
 				continue;
 			}
