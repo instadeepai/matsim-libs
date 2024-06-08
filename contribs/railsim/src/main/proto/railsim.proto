@@ -56,5 +56,7 @@ service RailsimFactory{
     rpc getEnvironment (ProtoGrpcPort)  returns (ProtoConfirmationResponse) {};
 
     rpc resetEnv (ProtoGrpcPort) returns (ProtoAgentIDs) {};
+
+    rpc getAgentIds (ProtoGrpcPort) returns (ProtoAgentIDs) {};
 }
 
