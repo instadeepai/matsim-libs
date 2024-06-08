@@ -8,6 +8,10 @@ import ch.sbb.matsim.contrib.railsim.grpc.ProtoConfirmationResponse;
 import ch.sbb.matsim.contrib.railsim.grpc.ProtoGrpcPort;
 import ch.sbb.matsim.contrib.railsim.grpc.RailsimFactoryGrpc;
 import ch.sbb.matsim.contrib.railsim.grpc.ProtoAgentIDs;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.scenario.ScenarioUtils;
 
 
 import java.io.IOException;
@@ -99,9 +103,14 @@ public class EnvironmentFactoryServer {
         public void resetEnv(ProtoGrpcPort grpcPort, StreamObserver<ProtoAgentIDs> responseObserver) {
             System.out.println("Reset env id: "+grpcPort);
 
+			String configFilename = "/Users/akashsinha/Documents/SBB/matsim-libs/contribs/railsim/test/input/ch/sbb/matsim/contrib/railsim/integration/microTrackOppositeTrafficMany/config.xml";
+//		String configFilename = "/Users/akashsinha/Documents/SBB/matsim-libs/contribs/railsim/test/input/ch/sbb/matsim/contrib/railsim/integration/microJunctionY/config.xml";
+//		String configFilename = "/Users/akashsinha/Documents/SBB/matsim-libs/contribs/railsim/test/input/ch/sbb/matsim/contrib/railsim/integration/microStationRerouting/config.xml";
+
+
 			// fetch the object from map and reset it
 			RailsimEnv env = this.envMap.get(grpcPort.getGrpcPort());
-			List<String> agentIds = env.reset();
+			List<String> agentIds = env.reset(configFilename);
 
 			//Create response using agentIds
 			ProtoAgentIDs response = ProtoAgentIDs.newBuilder()
@@ -119,6 +128,23 @@ public class EnvironmentFactoryServer {
 			env.startSimulation();
 
         }
+
+		public void getAgentIds(ProtoGrpcPort grpcPort, StreamObserver<ProtoAgentIDs> responseObserver){
+			String configFilename = "/Users/akashsinha/Documents/SBB/matsim-libs/contribs/railsim/test/input/ch/sbb/matsim/contrib/railsim/integration/microTrackOppositeTrafficMany/config.xml";
+			Config config = ConfigUtils.loadConfig(configFilename);
+			Scenario scenario = ScenarioUtils.loadScenario(config);
+			RailsimEnv env = this.envMap.get(grpcPort.getGrpcPort());
+
+			List<String> agentIds = env.getAllTrainIds(scenario);
+			//Create response using agentIds
+			ProtoAgentIDs response = ProtoAgentIDs.newBuilder()
+				.addAllAgentId(agentIds)
+				.build();
+
+			// Send the reply back to the client.
+			responseObserver.onNext(response);
+			responseObserver.onCompleted();
+		}
     }
 
 }

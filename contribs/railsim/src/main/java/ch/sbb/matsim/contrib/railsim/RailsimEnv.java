@@ -35,7 +35,7 @@ public class RailsimEnv {
 
 	}
 
-	private List<String> getAllTrainIds(Scenario scenario){
+	public List<String> getAllTrainIds(Scenario scenario){
 
 		List<String> trainIds = new ArrayList<>();
 
@@ -53,12 +53,7 @@ public class RailsimEnv {
 		return trainIds;
 	}
 
-	public List<String> reset(){
-
-		// start the simulation
-		// pass the observation to the RLClient
-
-		String configFilename = "/Users/akashsinha/Documents/SBB/matsim-libs/contribs/railsim/test/input/ch/sbb/matsim/contrib/railsim/integration/microTrackOppositeTrafficMany/config.xml";
+	public List<String> reset(String configFilename){
 
 		Config config = ConfigUtils.loadConfig(configFilename);
 		config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);

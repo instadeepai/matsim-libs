@@ -25,9 +25,11 @@ import org.matsim.pt.transitSchedule.api.TransitRouteStop;
 import org.matsim.vehicles.Vehicle;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.*;
+import static java.util.concurrent.Executors.*;
 
 public class RLTrainDisposition implements TrainDisposition {
 	RailResourceManager resources;
@@ -125,7 +127,7 @@ public class RLTrainDisposition implements TrainDisposition {
 		// Update route for the train until the next switch node.
 		Link curLink = network.getLinks().get(train.getHeadLink());
 
-		getPathToSwitchNodeOnTrack(curLink, null, route, resources);
+		getPathToSwitchNodeOnTrack(curLink, null, route, resources, network);
 
 		// calculate the scheduled departure times of the train
 		calculateScheduleOnDeparture((TrainState) train);
@@ -136,47 +138,103 @@ public class RLTrainDisposition implements TrainDisposition {
 
 	@Override
 	public DispositionResponse requestNextSegment(double time, TrainPosition position, double dist) {
-//		// calculate and send StepOutput to rl
-		Observation ob = getObservation(time, position);
 
+		Id<Vehicle> trainId = position.getPt().getPlannedVehicleId();
 		RailLink bufferTipLink = getBufferTip(resources, (TrainState) position);
-		Node toNodeBufferTipLink = network.getLinks().get(bufferTipLink.getLinkId()).getToNode();
-		if(toNodeBufferTipLink.getOutLinks().size()>=3){
-			// RL should be called only when the buffer is about to reach the decision node
-			Map<String, StepOutput> stepOutputMap = getStepOutput(position, ob, getReward(), false);
-			bufferStepOutputMap.putAll(stepOutputMap);
-			rlClient.sendObservation(bufferStepOutputMap);
-			// clear the buffer after sending the stepOutput
-			bufferStepOutputMap.clear();
 
-			// get action from rl
-			Map<String, Integer> actionMap = rlClient.getAction();
+		// outTracks contain list of outLinks from bufferTipLink. The list does not contain the reverse link of bufferTipLink
+		List<Link> outTracks = getOutTracks(network.getLinks().get(bufferTipLink.getLinkId()), network);
+
+//		if(outTracks.size()>=2){
+		if(true){
+			// RL should be called only when the train's safety buffer is about to reach the decision node
+
+			// calculate and send StepOutput to rl
+			Observation ob = getObservation(time, position);
+			Map<String, StepOutput> stepOutputMap = getStepOutput(position, ob, getReward(), false);
+			if (activeTrains.containsKey(trainId)){
+				bufferStepOutputMap.putAll(stepOutputMap);
+				rlClient.sendObservation(bufferStepOutputMap);
+
+
+				// start a new thread and send observation through rlClient
+//				Thread rlSendObservationThread = new Thread(() -> rlClient.sendObservation(bufferStepOutputMap));
+//				rlSendObservationThread.start();
+//				try {
+//					// Wait for the rlSendObservationThread to finish
+//					rlSendObservationThread.join();
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+				// clear the buffer after sending the stepOutput
+				bufferStepOutputMap.clear();
+
+				// start a new thread ot get action from rl
+				Map<String, Integer> actionMap = new HashMap<>();
+				rlClient.getAction(actionMap);
+//				Thread rlgetActionThread = new Thread(() -> rlClient.getAction(actionMap));
+//				rlgetActionThread.start();
+//				try {
+//					// Wait for the rlgetActionThread to finish
+//					rlgetActionThread.join();
+//				} catch (InterruptedException e) {
+//					e.printStackTrace();
+//				}
+
+//			rlClient.getAction(actionMap);
+				int action = actionMap.get(trainId);
+//				int action = actionMap.values().iterator().next();
+
+
+//			// Create a single-threaded executor
+//			ExecutorService executorService = newSingleThreadExecutor();
+//
+//			// Create a Callable task
+//			Callable<Map<String, Integer>> task = () -> rlClient.getAction();
+//
+//			// Submit the task to the executor service and get a Future object
+//			Future<Map<String, Integer>> futureResult = executorService.submit(task);
+//			Map<String, Integer> result = null;
+//			try {
+//				// Wait for the task to complete and get the result
+//				result = futureResult.get();
+//				System.out.println("task returned: " + result);
+//			} catch (InterruptedException | ExecutionException e) {
+//				e.printStackTrace();
+////				executorService.shutdown();
+//			}
+//			finally {
+//				// Shutdown the executor service
+//				executorService.shutdown();
+//			}
 
 			//update route based on the action from rl
-			int action = actionMap.get(position.getPt().getPlannedVehicleId().toString());
+//			int action = result.get(trainId);
 
-			StepOutput out = stepOutputMap.get(position.getPt().getPlannedVehicleId().toString());
-			switch (action){
-				case 0:{
-					// update route in the query direction
-					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
-					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
-					break;
-				}
-				case 1:{
-					// update route in the other direction
-					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
-					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
-					break;
-				}
-				case 2:{
-					// stop the train
-					return new DispositionResponse(0, 0, null);
-				}
-				default:{
-					System.out.println("Illegal action");
-				}
-
+//			StepOutput out = stepOutputMap.get(position.getPt().getPlannedVehicleId().toString());
+				StepOutput out = stepOutputMap.values().iterator().next();
+//			switch (action){
+//				case 0:{
+//					// update route in the query direction
+//					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
+//					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+//					break;
+//				}
+//				case 1:{
+//					// update route in the other direction
+//					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
+//					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+//					break;
+//				}
+//				case 2:{
+//					// stop the train
+//					return new DispositionResponse(0, 0, null);
+//				}
+//				default:{
+//					System.out.println("Illegal action");
+//				}
+//
+//			}
 			}
 		}
 

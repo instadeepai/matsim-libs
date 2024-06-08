@@ -23,88 +23,59 @@ public class RLUtils {
 	}
 
 
-	public static boolean getPathToSwitchNodeOnTrack(Link curLink, Node target, List<RailLink> path, RailResourceManager resources){
+	public static boolean getPathToSwitchNodeOnTrack(Link curLink, Node target, List<RailLink> path, RailResourceManager resources, Network network){
+		/**
+		get links from a node to the next switch node on the same track.
+		l0 St l1 l2 l3 l4 Sw
+		path = l1, l2, l3, l4
+
+		If target node found in the path, return true else false
+
+		**/
 
 		// In the beginning there will be just one link (corresponding to the start link)
 		// specified in the route of each train. However, the route of the train has a duplicated entry
 		// of the entry link. Therefore, min(path.size()) = 2 at the time of start of departure.
+
+		if (curLink.getToNode().equals(target))
+			return true;
+
 		if (path.size()==2 && path.get(0).equals(path.get(1))){
 			// remove the duplicate entry link for the train
 			path.remove(1);
 		}
 
-//		get links from a node to the next switch node on the same track.
-//		l0 St l1 l2 l3 l4 Sw
-//		path = l1, l2, l3, l4
-//
-//		If target node found in the path, return true else false
+		List<Link> outTracks = getOutTracks(curLink, network);
+		while (outTracks.size()==1){
+			Link nextTrackLink = outTracks.get(0);
 
-		Node start = curLink.getToNode();
-//		Node start = network.getLinks().get(curLink.getLinkId()).getToNode();
+			// convert Link to Raillink and append the link to path
+			RailLink convertedTrackLink = resources.getLink(nextTrackLink.getId());
+			path.add(convertedTrackLink);
 
-		// at all points in the track start node will have two outgoing links except at the final goal point
-		// where outgoing link will be 1 or at a switch node where the outgoing links will be more than 2.
-		while ( start.getOutLinks().values().size() == 2){
-			Link nextLink = null;
+			outTracks = getOutTracks(nextTrackLink, network);
 
-			// get outLinks from the start node
-			List<Link> outLinks = start.getOutLinks().values().stream().collect(Collectors.toList());
-			assert (outLinks.size() == 2);
-
-			// get the fromNode of the curLink
-			Node fromNodeCurLink = curLink.getFromNode();
-
-			for (Link outLink : outLinks){
-				if (outLink.getToNode().equals(fromNodeCurLink)){
-					// Ignore the link where outLink(start) == curLink
-					continue;
-				}
-				else {
-					nextLink = outLink;
-					break;
-				}
-			}
-
-			// convert Link to Raillink
-			RailLink convertedNextLink = resources.getLink(nextLink.getId());
-			path.add(convertedNextLink);
-
-			// update start node and curLink
-			start = nextLink.getToNode();
-			curLink = nextLink;
-			if (target != null && start.equals(target)) {
-				// target found in the path
+			if (nextTrackLink.getToNode().equals(target))
 				return true;
-			}
+
 		}
-		// no path found to the target
 		return false;
 	}
+
 	public static void updateRoute(Network network, TrainState train, Node nextObsNode, RailResourceManager resources){
 
 		// Get the last link in the route
 		RailLink lastLinkInRoute = train.route.get(train.route.size() -1);
 
-		// get the toNode of the lastLinkInRoute
-		Node toNodeLastLinkInRoute = getToNode(network, lastLinkInRoute);
-
-		// get the fromNode of the lastLinkInRoute
-		Node fromNodeLastLinkInRoute = network.getLinks().get(lastLinkInRoute.getLinkId()).getFromNode();
-
 		// get the outLinks from the toNode of the lastLinkInRoute
-		List<Link> nextLinks = toNodeLastLinkInRoute.getOutLinks().values().stream().collect(Collectors.toList());
+		List<Link> nextTracks = getOutTracks(network.getLinks().get(lastLinkInRoute.getLinkId()), network);
 
 		//path to the nextObsNode
 		List<RailLink> path = null;
-		for (Link nextLink : nextLinks){
-
-			// skip the link that takes back on the same track
-			if (nextLink.getToNode().equals(fromNodeLastLinkInRoute))
-				continue;
-
+		for (Link nextLink : nextTracks){
 			// To store the path from lastLinkInRoute to node connecting the nextObsNode
 			 path = new ArrayList<>();
-			if (getPathToSwitchNodeOnTrack(network.getLinks().get(lastLinkInRoute.getLinkId()), nextObsNode, path, resources))
+			if (getPathToSwitchNodeOnTrack(network.getLinks().get(lastLinkInRoute.getLinkId()), nextObsNode, path, resources, network))
 				break;
 		}
 
@@ -160,8 +131,8 @@ public class RLUtils {
 
 	public static Boolean isSwitchable(Node switchNode, RailLink curLink, Network network){
 
-		int numOutGoingLinks = switchNode.getOutLinks().size();
-		if (numOutGoingLinks <= 2){
+		int numOutGoingTracks = getOutTracks(network.getLinks().get(curLink.getLinkId()), network).size();
+		if (numOutGoingTracks <= 1){
 			return false;
 		}
 		else{
@@ -197,6 +168,41 @@ public class RLUtils {
 			RailLink bufferTip = reservedSegment.get(reservedSegment.size() - 1);
 			return bufferTip;
 		}
+	}
+
+	public static List<Link> getOutTracks(Link link, Network network){
+
+		List<Link> outTracks =  new ArrayList<>();
+
+		Node toNode = link.getToNode();
+		if (toNode.getOutLinks() != null){
+			for (Link l : toNode.getOutLinks().values()){
+				if (l.getToNode().equals(link.getFromNode())){
+					// skip the outlink that leads backward in a bi-directional network
+					continue;
+				}else{
+					outTracks.add(l);
+				}
+			}
+		}
+		return outTracks;
+	}
+
+	public static List<Link> getMergingTracks(Link link){
+		List<Link> inTracks = new ArrayList<>();
+
+		Node toNode = link.getToNode();
+		if (toNode.getInLinks() != null){
+			for(Link l: toNode.getInLinks().values()){
+				if (l.equals(link)){
+					continue;
+				}else{
+					inTracks.add(l);
+				}
+			}
+		}
+
+		return inTracks;
 	}
 
 }

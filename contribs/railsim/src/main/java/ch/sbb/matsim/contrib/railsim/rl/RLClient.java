@@ -28,9 +28,9 @@ public class RLClient {
         blockingStub = RailsimConnecterGrpc.newBlockingStub(channel);
     }
 
-    public Map<String, Integer> getAction(){
+    public void getAction(Map<String, Integer> resultActionMap){
 
-        ProtoActionMap actionMap;
+        ProtoActionMap actionMap=null;
 
         try {
             // Call the original method on the server.
@@ -39,10 +39,10 @@ public class RLClient {
         } catch (StatusRuntimeException e) {
             // Log a warning if the RPC fails.
             logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
-            return null;
+//            return null;
         }
-
-        return actionMap.getDictActionMap();
+		resultActionMap.putAll(actionMap.getDictActionMap());
+//        return actionMap.getDictActionMap();
     }
 
     public String sendObservation(Map<String, StepOutput> stepOutputMap){
@@ -87,11 +87,11 @@ public class RLClient {
         return msg.getAck();
     }
 
-    public static void  main(String args[]) throws InterruptedException {
-        // Access a service running on the local machine on port 50051
-		RLClient client = new RLClient(50051);
-		Observation ob = new Observation(2, true);
-		Map<String, Integer> actionMap = client.getAction();
-		System.out.println(actionMap);
-    }
+//    public static void  main(String args[]) throws InterruptedException {
+//        // Access a service running on the local machine on port 50051
+//		RLClient client = new RLClient(50051);
+//		Observation ob = new Observation(2, true);
+//		Map<String, Integer> actionMap = client.getAction();
+//		System.out.println(actionMap);
+//    }
 }
