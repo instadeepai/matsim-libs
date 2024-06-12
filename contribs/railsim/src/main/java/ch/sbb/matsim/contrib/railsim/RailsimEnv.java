@@ -74,5 +74,9 @@ public class RailsimEnv {
 		controler.run();
 	}
 
+	void shutdown(){
+		this.rlClient.shutdown();
+	}
+
 
 }

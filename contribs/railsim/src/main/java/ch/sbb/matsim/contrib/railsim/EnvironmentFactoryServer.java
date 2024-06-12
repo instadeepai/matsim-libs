@@ -78,9 +78,6 @@ public class EnvironmentFactoryServer {
     private class RailsimFactory extends RailsimFactoryGrpc.RailsimFactoryImplBase {
 
         Map<Integer, RailsimEnv> envMap = new HashMap<>();
-
-
-
         @Override
         public void getEnvironment(ProtoGrpcPort grpcPort, StreamObserver<ProtoConfirmationResponse> responseObserver) {
             //     Create an instance of Railsim environment and store it in a map
@@ -89,7 +86,7 @@ public class EnvironmentFactoryServer {
 			RLClient rlClient = new RLClient(grpcPort.getGrpcPort());
             RailsimEnv env = new RailsimEnv(rlClient);
 
-            // Store the environment created with it's key being the port
+            // Store the environment created with its key being the port
             this.envMap.put(grpcPort.getGrpcPort(), env);
 
 			// Send the Ack message back to the client.
@@ -100,6 +97,7 @@ public class EnvironmentFactoryServer {
 			responseObserver.onCompleted();
         }
 
+//		TODO: Send the config name in the request body.
         public void resetEnv(ProtoGrpcPort grpcPort, StreamObserver<ProtoAgentIDs> responseObserver) {
             System.out.println("Reset env id: "+grpcPort);
 
@@ -125,8 +123,11 @@ public class EnvironmentFactoryServer {
 
 			// Start the simulation
 			//TODO: Should this be started on a different thread so that the endpoint is not blocked or is it automatically taken care of?
-			env.startSimulation();
-
+			try{
+				env.startSimulation();
+			}finally{
+				env.shutdown();
+			}
         }
 
 		public void getAgentIds(ProtoGrpcPort grpcPort, StreamObserver<ProtoAgentIDs> responseObserver){

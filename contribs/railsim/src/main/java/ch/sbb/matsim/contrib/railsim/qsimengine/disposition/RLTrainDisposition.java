@@ -12,6 +12,7 @@ import ch.sbb.matsim.contrib.railsim.rl.observation.Observation;
 import ch.sbb.matsim.contrib.railsim.rl.observation.ObservationTreeNode;
 import ch.sbb.matsim.contrib.railsim.rl.observation.StepOutput;
 import ch.sbb.matsim.contrib.railsim.rl.observation.TreeObservation;
+import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptor;
 import jakarta.inject.Inject;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -25,13 +26,15 @@ import org.matsim.pt.transitSchedule.api.TransitRouteStop;
 import org.matsim.vehicles.Vehicle;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static ch.sbb.matsim.contrib.railsim.rl.utils.RLUtils.*;
-import static java.util.concurrent.Executors.*;
 
 public class RLTrainDisposition implements TrainDisposition {
+
+	private static final Logger log = LogManager.getLogger(RLTrainDisposition.class);;
 	RailResourceManager resources;
 	TrainRouter router;
 	Network network;
@@ -145,96 +148,49 @@ public class RLTrainDisposition implements TrainDisposition {
 		// outTracks contain list of outLinks from bufferTipLink. The list does not contain the reverse link of bufferTipLink
 		List<Link> outTracks = getOutTracks(network.getLinks().get(bufferTipLink.getLinkId()), network);
 
-//		if(outTracks.size()>=2){
-		if(true){
-			// RL should be called only when the train's safety buffer is about to reach the decision node
-
-			// calculate and send StepOutput to rl
+		// RL should be called only when the train's safety buffer is about to reach the decision node
+		if(outTracks.size()>=2){
+//		if(true){
+			// calculate StepOutput
 			Observation ob = getObservation(time, position);
-			Map<String, StepOutput> stepOutputMap = getStepOutput(position, ob, getReward(), false);
-			if (activeTrains.containsKey(trainId)){
-				bufferStepOutputMap.putAll(stepOutputMap);
-				rlClient.sendObservation(bufferStepOutputMap);
+			Map<String, StepOutput> stepOutputMap = getStepOutput(position, ob, getReward(), false, false);
+			bufferStepOutputMap.putAll(stepOutputMap);
 
+			log.info("Thread: "+ Thread.currentThread().getName() + " Send observation for train: "+trainId + " at timestep: " + (time));
+			rlClient.sendObservation(bufferStepOutputMap);
 
-				// start a new thread and send observation through rlClient
-//				Thread rlSendObservationThread = new Thread(() -> rlClient.sendObservation(bufferStepOutputMap));
-//				rlSendObservationThread.start();
-//				try {
-//					// Wait for the rlSendObservationThread to finish
-//					rlSendObservationThread.join();
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-				// clear the buffer after sending the stepOutput
-				bufferStepOutputMap.clear();
-
-				// start a new thread ot get action from rl
-				Map<String, Integer> actionMap = new HashMap<>();
-				rlClient.getAction(actionMap);
-//				Thread rlgetActionThread = new Thread(() -> rlClient.getAction(actionMap));
-//				rlgetActionThread.start();
-//				try {
-//					// Wait for the rlgetActionThread to finish
-//					rlgetActionThread.join();
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-
-//			rlClient.getAction(actionMap);
-				int action = actionMap.get(trainId);
-//				int action = actionMap.values().iterator().next();
-
-
-//			// Create a single-threaded executor
-//			ExecutorService executorService = newSingleThreadExecutor();
-//
-//			// Create a Callable task
-//			Callable<Map<String, Integer>> task = () -> rlClient.getAction();
-//
-//			// Submit the task to the executor service and get a Future object
-//			Future<Map<String, Integer>> futureResult = executorService.submit(task);
-//			Map<String, Integer> result = null;
-//			try {
-//				// Wait for the task to complete and get the result
-//				result = futureResult.get();
-//				System.out.println("task returned: " + result);
-//			} catch (InterruptedException | ExecutionException e) {
-//				e.printStackTrace();
-////				executorService.shutdown();
-//			}
-//			finally {
-//				// Shutdown the executor service
-//				executorService.shutdown();
-//			}
+			// clear the buffer after sending the stepOutput
+			bufferStepOutputMap.clear();
+			// start a new thread to get action from rl
+			log.info("Thread: "+ Thread.currentThread().getName() + " Get action for train: "+trainId + " at timestep: " + (time));
+			Map<String, Integer> actionMap = new HashMap<>();
+			rlClient.getAction(time, trainId.toString(), actionMap);
+			log.info("Thread: "+ Thread.currentThread().getName() + " Recd. action for train: "+trainId + " at timestep" + Math.ceil(time) + " action: "+actionMap);
 
 			//update route based on the action from rl
-//			int action = result.get(trainId);
+			int action = actionMap.get(trainId.toString());
+			StepOutput out = stepOutputMap.values().iterator().next();
+			switch (action){
+				case 0:{
+					// update route in the query direction
+					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
+					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+					break;
+				}
+				case 1:{
+					// update route in the other direction
+					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
+					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
+					break;
+				}
+				case 2:{
+					// stop the train
+					return new DispositionResponse(0, 0, null);
+				}
+				default:{
+					System.out.println("Illegal action");
+				}
 
-//			StepOutput out = stepOutputMap.get(position.getPt().getPlannedVehicleId().toString());
-				StepOutput out = stepOutputMap.values().iterator().next();
-//			switch (action){
-//				case 0:{
-//					// update route in the query direction
-//					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(1).getNodeId());
-//					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
-//					break;
-//				}
-//				case 1:{
-//					// update route in the other direction
-//					Node nextSwitchNodePos = network.getNodes().get(out.getObservation().getObsTree().get(2).getNodeId());
-//					updateRoute(network, (TrainState) position, nextSwitchNodePos, resources);
-//					break;
-//				}
-//				case 2:{
-//					// stop the train
-//					return new DispositionResponse(0, 0, null);
-//				}
-//				default:{
-//					System.out.println("Illegal action");
-//				}
-//
-//			}
 			}
 		}
 
@@ -295,7 +251,7 @@ public class RLTrainDisposition implements TrainDisposition {
 	public void onTermination(double time, TrainPosition position){
 		// Store the StepOutput in bufferStepOutput.
 		// bufferStepOutput is not sent to RL until there is an observation for a train whose done=false
-		bufferStepOutputMap.putAll(getStepOutput(position, getObservation(time, position), getReward(), true));
+		bufferStepOutputMap.putAll(getStepOutput(position, getObservation(time, position), getReward(), true, false));
 
 		// remove the train from active trains
 		activeTrains.remove(position.getPt().getPlannedVehicleId());
@@ -330,7 +286,7 @@ public class RLTrainDisposition implements TrainDisposition {
 		// set all the trains having heavy negative reward
 
 		for(TrainPosition train: activeTrains.values()){
-			Map<String, StepOutput> stepOutputMap = getStepOutput(train, getObservation(now, train), -100.0, true);
+			Map<String, StepOutput> stepOutputMap = getStepOutput(train, getObservation(now, train), -100.0, false, true);
 			bufferStepOutputMap.putAll(stepOutputMap);
 		}
 		rlClient.sendObservation(bufferStepOutputMap);
@@ -395,14 +351,14 @@ public class RLTrainDisposition implements TrainDisposition {
 	}
 
 	private Map<String, StepOutput> getStepOutput
-		(TrainPosition train, Observation observation, double reward, Boolean done){
+		(TrainPosition train, Observation observation, double reward, Boolean terminated, Boolean truncated){
 
 		StepOutput stepOutput = new StepOutput();
 
 		stepOutput.setInfo(null);
 		stepOutput.setReward(reward);
-		stepOutput.setTerminated(done);
-		stepOutput.setTruncated(done);
+		stepOutput.setTerminated(terminated);
+		stepOutput.setTruncated(truncated);
 		stepOutput.setObservation(observation);
 
 		Map<String, StepOutput> stepOutputMap= new HashMap<>();
