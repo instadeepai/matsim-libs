@@ -40,9 +40,14 @@ message ProtoConfirmationResponse{
     string ack = 1;
 }
 
+message ProtoGetActionRequest{
+  double timestamp = 1;
+  string trainId = 2;
+}
+
 service RailsimConnecter {
 
-    rpc getAction (google.protobuf.Empty) returns (ProtoActionMap) {};
+    rpc getAction (ProtoGetActionRequest) returns (ProtoActionMap) {};
 
     rpc updateState (ProtoStepOutputMap) returns (ProtoConfirmationResponse) {};
 

@@ -74,7 +74,7 @@ public class RailsimEngine implements Steppable {
 
 	@Override
 	public void doSimStep(double time) {
-
+		log.info("Thread name:: "+Thread.currentThread().getName() + " timestep: "+time);
 		UpdateEvent update = updateQueue.peek();
 
 		// Update loop over all required state updates
